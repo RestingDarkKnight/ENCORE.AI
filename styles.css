@@ -12,7 +12,7 @@
   --shadow: 0 4px 20px rgba(26, 43, 74, 0.08);
   --shadow-hover: 0 8px 28px rgba(26, 43, 74, 0.12);
   --radius: 16px;
-  --max-width: 1200px;
+  --max-width: 800px;
   --font-headline: "Fraunces", Georgia, "Times New Roman", serif;
   --font-body: "Inter", system-ui, -apple-system, sans-serif;
 }
