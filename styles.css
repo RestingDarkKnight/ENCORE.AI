@@ -94,7 +94,7 @@ a:hover {
 .section-heading {
   font-family: var(--font-headline);
   font-weight: 500;
-  font-size: 28px;
+  font-size: 50px;
   line-height: 1.2;
   color: var(--navy);
   margin: 0 0 24px;
@@ -504,24 +504,6 @@ a:hover {
   padding-top: 24px;
   border-top: 1px solid var(--border);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
