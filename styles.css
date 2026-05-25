@@ -577,6 +577,12 @@ a:hover {
   padding-top: 24px;
   border-top: 1px solid var(--border);
 }
+
+
+
+
+
+
 /* Mobile */
 @media (max-width: 768px) {
   body {
