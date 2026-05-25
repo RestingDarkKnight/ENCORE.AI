@@ -262,7 +262,7 @@ a:hover {
   outline: none;
   border-color: var(--maroon);
   box-shadow: 0 0 0 3px rgba(120, 20, 20, 0.2);
-  text-align: center
+ 
 }
 
 .email-form button {
@@ -295,6 +295,7 @@ a:hover {
 .email-form--large input[type="email"] {
   width: 100%;
   min-height: 52px;
+  text-align: center
 }
 
 .email-form--large button {
