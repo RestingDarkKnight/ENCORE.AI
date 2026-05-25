@@ -664,7 +664,7 @@ body::before {
 /* ===== HERO ===== */
 
 .hero {
-  position: relative;
+  position: center;
 
   padding-top: 96px;
   padding-bottom: 120px;
@@ -897,26 +897,7 @@ body::before {
   backdrop-filter: blur(10px);
 }
 
-/* ===== SCROLLBAR ===== */
 
-::-webkit-scrollbar {
-  width: 10px;
-}
-
-::-webkit-scrollbar-track {
-  background: #edf2f7;
-}
-
-::-webkit-scrollbar-thumb {
-  background:
-    linear-gradient(
-      180deg,
-      #6366f1,
-      #8b5cf6
-    );
-
-  border-radius: 999px;
-}
 
 /* ===== RESPONSIVE ===== */
 
