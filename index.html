@@ -185,5 +185,246 @@
   </footer>
 
   <script src="script.js"></script>
+
+  export default function EncorePremiumUpgrade() {
+  return (
+    <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] overflow-hidden">
+      {/* Ambient Background */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.10),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(14,165,233,0.08),transparent_25%)] pointer-events-none" />
+
+      {/* Navbar */}
+      <header className="sticky top-0 z-50 backdrop-blur-xl bg-white/80 border-b border-slate-200/70">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center shadow-lg shadow-sky-500/10">
+              <span className="text-lg font-black text-white">E</span>
+            </div>
+
+            <div>
+              <h1 className="text-xl font-bold tracking-tight">ENCORE</h1>
+              <p className="text-xs text-slate-500">AI-native hiring platform</p>
+            </div>
+          </div>
+
+          <nav className="hidden md:flex items-center gap-8 text-sm text-slate-600">
+            <a href="#features" className="hover:text-slate-900 transition">Features</a>
+            <a href="#workflow" className="hover:text-slate-900 transition">Workflow</a>
+            <a href="#results" className="hover:text-slate-900 transition">Results</a>
+
+            <button className="px-5 py-2.5 rounded-xl bg-slate-900 text-white font-semibold hover:scale-105 transition-all">
+              Book Demo
+            </button>
+          </nav>
+        </div>
+      </header>
+
+      {/* Hero */}
+      <section className="relative max-w-7xl mx-auto px-6 pt-24 pb-20 lg:pt-28">
+        <div className="grid lg:grid-cols-2 gap-16 items-center">
+          <div>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-slate-200 bg-white shadow-sm text-sm text-sky-700 mb-7">
+              <div className="w-2 h-2 rounded-full bg-sky-500 animate-pulse" />
+              Simulation-based technical hiring
+            </div>
+
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-black leading-[1.02] tracking-tight text-slate-950">
+              Replace interviews
+              <span className="block text-slate-400">
+                with engineering signal.
+              </span>
+            </h1>
+
+            <p className="mt-8 text-lg text-slate-600 leading-relaxed max-w-xl">
+              ENCORE evaluates real engineering judgment using AI-scored case-study simulations — not resumes, trivia, or interview theatrics.
+            </p>
+
+            <div className="flex flex-wrap gap-4 mt-10">
+              <button className="px-7 py-4 rounded-2xl bg-slate-900 text-white font-semibold hover:scale-[1.02] transition-all shadow-xl shadow-slate-300">
+                Start Hiring
+              </button>
+
+              <button className="px-7 py-4 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 transition-all font-medium text-slate-700 shadow-sm">
+                View Platform
+              </button>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4 mt-14">
+              {[
+                ['93%', 'Signal accuracy'],
+                ['4x', 'Faster screening'],
+                ['68%', 'Better fit'],
+              ].map(([value, label]) => (
+                <div
+                  key={label}
+                  className="p-5 rounded-3xl border border-slate-200 bg-white shadow-sm"
+                >
+                  <div className="text-3xl font-black text-slate-900">{value}</div>
+                  <div className="text-sm text-slate-500 mt-1">{label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Dashboard Mockup */}
+          <div className="relative">
+            <div className="absolute -top-10 right-0 w-48 h-48 bg-sky-200/50 rounded-full blur-3xl" />
+
+            <div className="relative rounded-[32px] border border-slate-200 bg-white shadow-2xl shadow-slate-200/70 overflow-hidden">
+              <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+                <div>
+                  <p className="text-sm text-slate-500">Candidate Simulation</p>
+                  <h3 className="text-xl font-bold mt-1 text-slate-900">
+                    Backend Architecture Assessment
+                  </h3>
+                </div>
+
+                <div className="px-4 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-medium">
+                  AI Evaluated
+                </div>
+              </div>
+
+              <div className="p-6 space-y-5">
+                {[
+                  ['Problem Solving', '94%'],
+                  ['System Design', '91%'],
+                  ['Code Reasoning', '96%'],
+                  ['Scalability', '88%'],
+                ].map(([title, score]) => (
+                  <div key={title}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-slate-700">{title}</span>
+                      <span className="font-semibold text-sky-700">{score}</span>
+                    </div>
+
+                    <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-sky-500 to-blue-600"
+                        style={{ width: score }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 p-6 pt-0">
+                <div className="p-5 rounded-2xl border border-slate-200 bg-slate-50">
+                  <p className="text-sm text-slate-500">Assessment Time</p>
+                  <h2 className="text-3xl font-black mt-2 text-slate-900">42m</h2>
+                </div>
+
+                <div className="p-5 rounded-2xl border border-sky-100 bg-sky-50">
+                  <p className="text-sm text-slate-500">Confidence Score</p>
+                  <h2 className="text-3xl font-black mt-2 text-slate-900">9.4/10</h2>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section id="features" className="max-w-7xl mx-auto px-6 py-20">
+        <div className="max-w-3xl mx-auto text-center">
+          <p className="uppercase tracking-[0.25em] text-sm font-semibold text-sky-700">
+            Why ENCORE
+          </p>
+
+          <h2 className="mt-5 text-4xl md:text-5xl font-black tracking-tight text-slate-950 leading-tight">
+            Built for engineering-first hiring teams.
+          </h2>
+        </div>
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mt-16">
+          {[
+            {
+              title: 'Simulation-Based Hiring',
+              desc: 'Evaluate real-world engineering judgment instead of memorized interview answers.',
+            },
+            {
+              title: 'AI Capability Scoring',
+              desc: 'Measure architecture thinking, execution quality, and systems reasoning automatically.',
+            },
+            {
+              title: 'Better Hiring Signal',
+              desc: 'Discover capable engineers overlooked by resume filters and pedigree bias.',
+            },
+            {
+              title: 'Recruiter Copilot',
+              desc: 'Instant evaluation summaries and candidate recommendations.',
+            },
+            {
+              title: 'Faster Technical Screening',
+              desc: 'Reduce engineering hiring cycles from weeks to hours.',
+            },
+            {
+              title: 'Enterprise Ready',
+              desc: 'Custom evaluation rubrics and scalable simulation workflows.',
+            },
+          ].map((feature) => (
+            <div
+              key={feature.title}
+              className="p-7 rounded-[28px] border border-slate-200 bg-white hover:shadow-xl hover:-translate-y-1 transition-all"
+            >
+              <div className="w-14 h-14 rounded-2xl bg-sky-50 border border-sky-100 flex items-center justify-center text-sky-700 text-xl mb-6">
+                ✦
+              </div>
+
+              <h3 className="text-xl font-bold text-slate-900">
+                {feature.title}
+              </h3>
+
+              <p className="mt-4 text-slate-600 leading-relaxed text-sm">
+                {feature.desc}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Workflow */}
+      <section id="workflow" className="max-w-7xl mx-auto px-6 py-24">
+        <div className="rounded-[40px] border border-slate-200 bg-white p-10 lg:p-16 shadow-xl shadow-slate-200/50 overflow-hidden relative">
+          <div className="max-w-3xl">
+            <p className="uppercase tracking-[0.2em] text-sm font-semibold text-sky-700">
+              Workflow
+            </p>
+
+            <h2 className="mt-5 text-4xl md:text-5xl font-black leading-tight tracking-tight text-slate-950">
+              Structured technical hiring.
+              <span className="text-slate-400"> Without interview chaos.</span>
+            </h2>
+          </div>
+
+          <div className="grid md:grid-cols-4 gap-6 mt-16">
+            {[
+              'Create role simulation',
+              'Candidates solve scenarios',
+              'AI evaluates capability',
+              'Hire with confidence',
+            ].map((step, i) => (
+              <div
+                key={step}
+                className="relative p-6 rounded-3xl border border-slate-200 bg-slate-50"
+              >
+                <div className="text-5xl font-black text-slate-200 absolute top-4 right-5">
+                  0{i + 1}
+                </div>
+
+                <div className="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-bold mb-6">
+                  {i + 1}
+                </div>
+
+                <p className="text-lg font-semibold leading-relaxed text-slate-900">
+                  {step}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 </body>
 </html>
