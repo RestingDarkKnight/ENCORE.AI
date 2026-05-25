@@ -561,8 +561,8 @@ a:hover {
 }
 
 .roles-inner .roles-image {
-  max-width: min(780px, 92vw);
-  max-height: min(34vh, 240px);
+  max-width: min(900px, 92vw);
+  max-height: min(34vh, 300px);
 }
 
 /* Partner */
