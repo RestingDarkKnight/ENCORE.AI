@@ -599,7 +599,7 @@ body::before {
 /* ===== PREMIUM TYPOGRAPHY ===== */
 
 .hero-headline {
-  font-size: clamp(3rem, 6vw, 5.4rem);
+  font-size: clamp(1rem, 4vw, 3rem);
   line-height: 0.96;
   letter-spacing: -0.05em;
   font-weight: 600;
