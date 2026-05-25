@@ -598,23 +598,33 @@ body::before {
 
 /* ===== PREMIUM TYPOGRAPHY ===== */
 
+/* =========================================================
+   CLEAN EDITORIAL HERO HEADLINE
+========================================================= */
+
 .hero-headline {
-  font-size: clamp(1rem, 4vw, 3rem);
-  line-height: 0.96;
-  letter-spacing: -0.05em;
+
+  font-family: var(--font-headline);
+
+  font-size: clamp(3rem, 6vw, 5rem);
+
+  line-height: 1.04;
+
+  letter-spacing: -0.045em;
+
   font-weight: 600;
 
-  background: linear-gradient(
-    135deg,
-    #0f172a 0%,
-    #312e81 45%,
-    #7c3aed 100%
-  );
-
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #10213E;
 
   max-width: 12ch;
+
+  -webkit-text-fill-color: unset;
+  -webkit-background-clip: unset;
+
+  background: none;
+
+  text-shadow:
+    0 2px 12px rgba(15,23,42,0.04);
 }
 
 .hero-subline {
@@ -1318,23 +1328,47 @@ body::before {
 
 /* ===== PREMIUM TYPOGRAPHY ===== */
 
-.hero-headline {
-  font-size: clamp(3rem, 6vw, 5.4rem);
-  line-height: 0.96;
-  letter-spacing: -0.05em;
-  font-weight: 600;
+/* =========================================================
+   CLEAN EDITORIAL HERO HEADLINE
+========================================================= */
 
-  background: linear-gradient(
-    135deg,
-    #0f172a 0%,
-    #312e81 45%,
-    #7c3aed 100%
-  );
+/* =========================================================
+   MOBILE HERO HEADING FIX
+========================================================= */
 
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+@media (max-width: 768px) {
 
-  max-width: 12ch;
+  .hero-headline {
+
+    font-size: clamp(2.4rem, 11vw, 3.4rem);
+
+    line-height: 1.08;
+
+    letter-spacing: -0.04em;
+
+    max-width: 100%;
+
+    margin-bottom: 18px;
+
+    text-wrap: balance;
+  }
+
+  .hero-subline {
+
+    font-size: 1rem;
+
+    line-height: 1.7;
+
+    max-width: 100%;
+  }
+
+  .hero-content {
+    text-align: left;
+  }
+
+  .hero {
+    padding-top: 56px;
+  }
 }
 
 .hero-subline {
