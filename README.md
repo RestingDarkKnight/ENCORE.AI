@@ -2,6 +2,8 @@
 
 Static single-page site for ENCORE — an AI-native hiring co-pilot for technical interviews. No build step, no frameworks.
 
+https://restingdarkknight.github.io/ENCORE.AI/
+
 ## Quick start
 
 Open `index.html` in a browser, or serve locally:
