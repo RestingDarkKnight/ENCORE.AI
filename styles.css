@@ -505,6 +505,296 @@ a:hover {
   border-top: 1px solid var(--border);
 }
 
+/* =========================================================
+   ENCORE DESIGN SYSTEM EXTENSION
+========================================================= */
+
+:root {
+
+  /* Spacing Scale */
+  --space-2xs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --space-3xl: 64px;
+  --space-4xl: 96px;
+
+  /* Radius Scale */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  /* Typography Scale */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-md: 16px;
+  --text-lg: 18px;
+  --text-xl: 24px;
+  --text-2xl: 32px;
+  --text-3xl: 48px;
+
+  /* Z-index System */
+  --z-dropdown: 1000;
+  --z-sticky: 1100;
+  --z-modal: 2000;
+  --z-toast: 3000;
+
+  /* Motion */
+  --transition-fast: 0.15s ease;
+  --transition-medium: 0.25s ease;
+  --transition-slow: 0.4s ease;
+
+  /* Advanced Shadows */
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.06);
+  --shadow-md: 0 8px 24px rgba(0,0,0,0.08);
+  --shadow-lg: 0 16px 48px rgba(0,0,0,0.12);
+}
+
+/* =========================================================
+   DARK MODE
+========================================================= */
+
+@media (prefers-color-scheme: dark) {
+
+  :root {
+    --cream: #0F172A;
+    --white: #1E293B;
+    --charcoal: #E2E8F0;
+    --border: #334155;
+    --navy: #F8FAFC;
+    --maroon: #E8B84A;
+    --yellow: #FACC15;
+    --yellow-hover: #EAB308;
+
+    --shadow: 0 4px 20px rgba(0,0,0,0.35);
+    --shadow-hover: 0 8px 28px rgba(0,0,0,0.45);
+  }
+
+  body {
+    background: var(--cream);
+    color: var(--charcoal);
+  }
+
+  .card,
+  .waitlist-card {
+    background: var(--white);
+    border-color: var(--border);
+  }
+
+  .site-header {
+    background: rgba(15, 23, 42, 0.9);
+    backdrop-filter: blur(12px);
+  }
+
+  input[type="email"] {
+    background: #111827;
+    color: white;
+  }
+
+  .footer-copy {
+    opacity: 0.6;
+  }
+}
+
+/* =========================================================
+   UTILITY CLASSES
+========================================================= */
+
+/* Flex */
+.flex {
+  display: flex;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Grid */
+.grid {
+  display: grid;
+}
+
+.grid-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+/* Spacing */
+.mt-lg { margin-top: var(--space-lg); }
+.mb-lg { margin-bottom: var(--space-lg); }
+
+.pt-xl { padding-top: var(--space-xl); }
+.pb-xl { padding-bottom: var(--space-xl); }
+
+/* Width */
+.w-full {
+  width: 100%;
+}
+
+/* Text */
+.text-center {
+  text-align: center;
+}
+
+.text-muted {
+  opacity: 0.7;
+}
+
+/* Visibility */
+.hidden {
+  display: none;
+}
+
+/* =========================================================
+   ANIMATION SYSTEM
+========================================================= */
+
+.fade-in {
+  animation: fadeIn 0.6s ease forwards;
+}
+
+.slide-up {
+  animation: slideUp 0.6s ease forwards;
+}
+
+.scale-in {
+  animation: scaleIn 0.4s ease forwards;
+}
+
+.hover-lift {
+  transition:
+    transform var(--transition-medium),
+    box-shadow var(--transition-medium);
+}
+
+.hover-lift:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-lg);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* =========================================================
+   SEMANTIC COMPONENT TOKENS
+========================================================= */
+
+.surface {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.surface-elevated {
+  box-shadow: var(--shadow-md);
+}
+
+.interactive {
+  transition:
+    transform var(--transition-medium),
+    box-shadow var(--transition-medium),
+    background-color var(--transition-fast);
+}
+
+.interactive:hover {
+  transform: translateY(-2px);
+}
+
+.content-narrow {
+  max-width: 720px;
+  margin-inline: auto;
+}
+
+.content-wide {
+  max-width: 1200px;
+  margin-inline: auto;
+}
+/* =========================================================
+   RESPONSIVE BREAKPOINTS
+========================================================= */
+
+/* Large Desktop */
+@media (min-width: 1440px) {
+
+  .container {
+    max-width: 1320px;
+  }
+
+  .hero-headline {
+    font-size: 48px;
+  }
+}
+
+/* Laptop */
+@media (max-width: 1200px) {
+
+  .hero-grid,
+  .partner-grid {
+    gap: 32px;
+  }
+}
+
+/* Tablet */
+@media (max-width: 992px) {
+
+  .cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .hero-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Mobile Large */
+@media (max-width: 768px) {
+
+  .grid-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .section {
+    padding: 64px 0;
+  }
+}
+
+
 
 
 
@@ -615,5 +905,21 @@ a:hover {
   .email-form input[type="email"],
   .email-form button {
     width: 100%;
+  }
+}
+/* Mobile Small */
+@media (max-width: 480px) {
+
+  .hero-headline {
+    font-size: 24px;
+    line-height: 1.15;
+  }
+
+  .container {
+    padding-inline: 16px;
+  }
+
+  .waitlist-card {
+    padding: 28px 20px;
   }
 }
