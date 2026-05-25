@@ -1690,3 +1690,47 @@ button {
       translateY(0);
   }
 }
+/* =========================================================
+   MOBILE IMAGE FULL-WIDTH FIX
+========================================================= */
+
+@media (max-width: 768px) {
+
+  .solution-image,
+  .roles-image,
+  .partner-visual img,
+  .hero-visual img {
+
+    width: 100%;
+    max-width: 100%;
+
+    border-radius: 20px;
+
+    object-fit: cover;
+
+    display: block;
+  }
+
+  .solution-figure,
+  .hero-visual,
+  .partner-visual {
+    width: 100%;
+  }
+
+  /* allow image to stretch wider */
+  .container {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  /* OPTIONAL:
+     full-bleed modern SaaS look */
+  .solution-image,
+  .roles-image {
+
+    width: calc(100% + 12px);
+
+    margin-left: -6px;
+    margin-right: -6px;
+  }
+}
