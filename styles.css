@@ -1021,7 +1021,7 @@ button {
       forwards,
     gradientShift 5s linear infinite;
 
-  transform-origin: left;
+  transform-origin: center;
   transform: scaleX(0);
 }
 
@@ -1092,7 +1092,7 @@ button {
    centered headings support */
 .text-center .section-heading::after,
 .text-center .section-heading::before {
-  left: 50%;
+  center: 50%;
   transform: translateX(-50%) scaleX(0);
   transform-origin: center;
 }
@@ -1122,6 +1122,22 @@ button {
     opacity: 1;
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
