@@ -685,24 +685,3 @@ a:hover {
     width: 100%;
   }
 }
-.site-logo {
-  height: 42px;
-  width: auto;
-  display: block;
-}
-
-.footer-logo {
-  height: 38px;
-}
-
-.hero-logo-center {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 28px;
-}
-
-.hero-logo-center img {
-  width: 280px;
-  max-width: 80%;
-  height: auto;
-}
