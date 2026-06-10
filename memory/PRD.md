@@ -49,23 +49,31 @@ A hiring manager describes a role; ENCORE uses Claude to generate a tailored cas
 - Approve & lock with celebratory confirmation + Reopen-to-edit.
 - 20/20 backend pytest passing; full frontend Playwright flow validated.
 
+### Phase 2 — The Candidate Loop ✅
+- Invite candidate from an APPROVED case (manager UI: name + email + time-limit + Invite button).
+- Unique tokenized `/take/{token}` link, copyable from the UI (no email integration yet).
+- Public token-gated candidate experience (no auth):
+  - Welcome with honor code gate.
+  - Section-by-section flow with progress ring stepper, visible (but calm) countdown timer, scenario as expandable on section 1.
+  - Per-question text answer (autosaves to `/api/take/{token}/progress` ~800ms after typing).
+  - Optional voice answer per question via `MediaRecorder` → uploaded to **Emergent Object Storage** under `encore/audio/{assignment_id}/{section_id}/...`.
+  - Whisper transcription (Emergent Universal Key) runs as a FastAPI background task — never blocks the candidate or the submit.
+  - Final submit screen: "You're done — nicely handled." with celebratory animation.
+  - Reopening a submitted token shows the done screen.
+- Manager-side response viewer endpoints (`/api/responses/by-assignment/{id}` + audio streaming) — UI in Phase 3.
+- 18/18 new backend pytest passing (+ previous 20/20 still green). All 8 frontend candidate-loop flows validated.
+
 ## Backlog
 ### P0 — needed before Phase 2 sign-off by user
 - (None — Phase 1 acceptance is: signup → wizard → generate → edit → approve. All in place.)
 - Live Claude round-trip — requires the user to provide `ANTHROPIC_API_KEY`.
 
-### P1 — Phase 2 (Candidate portal & assignments)
-- Manager: invite candidates by email (creates Assignment + unique token URL).
-- Candidate: token-based access page; one-question-at-a-time, calm focused UI; progress ring.
-- Voice answers (audio recording) + Whisper transcription as a background job.
-- Submission flow with confirmation.
-- Manager: candidate response viewer.
-
-### P2 — Phase 3 (Evaluation & scoring)
+### P1 — Phase 3 (Evaluation & scoring)
 - Server-side Claude evaluation against the case's rubric → scored report.
 - Per-criterion score, justification, strengths, concerns, recommendation, summary.
 - Side-by-side ranking of candidates for a case/role.
-- Email digest of new submissions.
+- Manager response viewer UI (audio playback, transcript display).
+- Optional: email digest of new submissions.
 
 ### P3 — Nice-to-have
 - Role templates / starter library.
