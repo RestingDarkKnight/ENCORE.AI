@@ -81,6 +81,10 @@ memory/
 test_reports/
 .emergent/
 
+# Allow .env.example templates (they show structure, no real values)
+!.env.example
+!**/.env.example
+
 # Mobile development
 android-sdk/
 .env
