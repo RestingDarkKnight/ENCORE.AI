@@ -19,10 +19,22 @@ async def create_role(payload: RoleCreate, manager: ManagerPublic = Depends(curr
 
 @router.get("", response_model=List[Role])
 async def list_roles(manager: ManagerPublic = Depends(current_manager)):
-    cursor = get_db().roles.find({"manager_id": manager.id}).sort("created_at", -1)
+    db = get_db()
+    cursor = db.roles.find({"manager_id": manager.id}).sort("created_at", -1)
     docs = [doc_strip(d) async for d in cursor]
+    if not docs:
+        return []
+    # Batch case counts in one aggregation instead of N+1 queries
+    role_ids = [d["id"] for d in docs]
+    counts = {
+        row["_id"]: row["count"]
+        async for row in db.cases.aggregate([
+            {"$match": {"role_id": {"$in": role_ids}}},
+            {"$group": {"_id": "$role_id", "count": {"$sum": 1}}},
+        ])
+    }
     for d in docs:
-        d["case_count"] = await get_db().cases.count_documents({"role_id": d["id"]})
+        d["case_count"] = counts.get(d["id"], 0)
     return [Role(**d) for d in docs]
 
 

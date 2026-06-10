@@ -54,8 +54,9 @@ async def manager_stats(manager: ManagerPublic = Depends(current_manager)):
     invited = await db.assignments.count_documents({"manager_id": manager.id})
     submitted = await db.assignments.count_documents({"manager_id": manager.id, "status": "submitted"})
 
-    # Evaluations + decisions are joined via case_id (we set it on insert)
-    evaluated = await db.evaluations.count_documents({"case_id": {"$in": [c["id"] async for c in db.cases.find({"manager_id": manager.id}, {"id": 1})]}})
+    # Materialise manager's case IDs once, then count joined collections in single queries
+    case_ids: List[str] = [c["id"] async for c in db.cases.find({"manager_id": manager.id}, {"id": 1})]
+    evaluated = await db.evaluations.count_documents({"case_id": {"$in": case_ids}}) if case_ids else 0
     decisions = await db.decisions.count_documents({"manager_id": manager.id})
     advanced = await db.decisions.count_documents({"manager_id": manager.id, "outcome": "advance"})
 

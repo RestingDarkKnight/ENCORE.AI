@@ -163,19 +163,36 @@ async def leaderboard(case_id: str, manager: ManagerPublic = Depends(current_man
     assignments = [
         doc_strip(d) async for d in db.assignments.find({"case_id": case_id, "manager_id": manager.id}).sort("created_at", -1)
     ]
+    if not assignments:
+        return LeaderboardResponse(case_id=case_id, case_title=case["title"], rows=[])
+
+    # Batch-fetch responses, evaluations, decisions to avoid N+1 queries
+    assignment_ids = [a["id"] for a in assignments]
+    responses_by_assignment = {
+        r["assignment_id"]: doc_strip(r)
+        async for r in db.responses.find({"assignment_id": {"$in": assignment_ids}})
+    }
+    response_ids = [r["id"] for r in responses_by_assignment.values()]
+    evaluations_by_response = {
+        e["response_id"]: doc_strip(e)
+        async for e in db.evaluations.find({"response_id": {"$in": response_ids}})
+    } if response_ids else {}
+    decisions_by_response = {
+        d["response_id"]: doc_strip(d)
+        async for d in db.decisions.find({"response_id": {"$in": response_ids}})
+    } if response_ids else {}
 
     rows: List[LeaderboardRow] = []
     for a in assignments:
-        r = await db.responses.find_one({"assignment_id": a["id"]})
+        r = responses_by_assignment.get(a["id"])
         if not r:
             rows.append(LeaderboardRow(assignment=Assignment(**a)))
             continue
-        r_id = r["id"]
-        e = await db.evaluations.find_one({"response_id": r_id})
-        d = await db.decisions.find_one({"response_id": r_id})
+        e = evaluations_by_response.get(r["id"])
+        d = decisions_by_response.get(r["id"])
         rows.append(LeaderboardRow(
             assignment=Assignment(**a),
-            response_id=r_id,
+            response_id=r["id"],
             overall_score=(e or {}).get("overall_score"),
             recommendation=(e or {}).get("recommendation"),
             summary=(e or {}).get("summary"),
