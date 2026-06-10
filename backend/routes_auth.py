@@ -21,6 +21,7 @@ def _to_public(doc: dict) -> ManagerPublic:
         email=doc["email"],
         full_name=doc["full_name"],
         company=doc.get("company"),
+        role=doc.get("role", "manager"),
         created_at=doc["created_at"],
     )
 

@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { ArrowLeft, Sparkle, FileText, Warning, ArrowRight, CheckCircle, Clock } from "@phosphor-icons/react";
+import ReviewStatusPill from "@/components/ReviewStatusPill";
 
 const DIFFICULTY_LABEL = {
   foundational: "Foundational",
@@ -167,12 +168,17 @@ export default function RoleDetail() {
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
                       <StatusPill status={c.status} />
+                      <ReviewStatusPill status={c.review_status} />
                       <span className="inline-flex items-center gap-1 text-xs text-ink-soft">
                         <Clock size={12} /> ~{c.estimated_minutes} min
                       </span>
-                      <span className="text-xs text-ink-soft">· {c.sections?.length || 0} sections · {c.rubric?.length || 0} rubric dimensions</span>
+                      {c.grounded_on && (c.grounded_on.approved || c.grounded_on.constraints || c.grounded_on.rejected) ? (
+                        <span className="text-[10px] text-brand-sand font-medium" title="Grounded on validated material">
+                          ⚓ grounded · {c.grounded_on.approved}A · {c.grounded_on.constraints}C · {c.grounded_on.rejected}R
+                        </span>
+                      ) : null}
                     </div>
                     <h3 className="font-display text-lg font-bold tracking-tight mb-2 group-hover:text-brand transition-colors">{c.title}</h3>
                     <p className="text-sm text-ink-soft line-clamp-2">{c.scenario_text}</p>

@@ -42,6 +42,13 @@ async def ensure_indexes() -> None:
     # Decisions - by response (one current decision per response)
     await db.decisions.create_index("response_id", unique=True)
     await db.decisions.create_index("manager_id")
+    # SME case reviews
+    await db.case_reviews.create_index("case_id")
+    await db.case_reviews.create_index("sme_id")
+    # Domain constraints
+    await db.domain_constraints.create_index("domain_key")
+    # Cases by domain + review status (grounding queries)
+    await db.cases.create_index([("domain_key", 1), ("review_status", 1), ("created_at", -1)])
 
 
 def close_client() -> None:

@@ -35,13 +35,13 @@ class ManagerLogin(BaseModel):
 
 class ManagerPublic(ManagerBase):
     id: str
-    role: Literal["manager", "candidate"] = "manager"
+    role: Literal["manager", "candidate", "sme"] = "manager"
     created_at: str
 
 
 class ManagerDB(ManagerBase):
     id: str = Field(default_factory=_new_id)
-    role: Literal["manager", "candidate"] = "manager"
+    role: Literal["manager", "candidate", "sme"] = "manager"
     password_hash: str
     created_at: str = Field(default_factory=_now_iso)
 
@@ -116,11 +116,16 @@ class CaseStudyDraft(BaseModel):
     estimated_minutes: int = 60
 
 
+ReviewStatus = Literal["pending_review", "approved", "rejected"]
+
+
 class Case(BaseModel):
     id: str = Field(default_factory=_new_id)
     role_id: str
     manager_id: str
     status: Literal["draft", "approved", "archived"] = "draft"
+    review_status: Optional[ReviewStatus] = None  # SME pipeline (None = legacy/not routed)
+    domain_key: Optional[str] = None              # Normalized industry+title for grounding
     title: str
     scenario_text: str
     sections: List[CaseSection]
@@ -128,9 +133,76 @@ class Case(BaseModel):
     estimated_minutes: int = 60
     model_used: Optional[str] = None
     model_version: Optional[str] = None
+    grounded_on: Optional[dict] = None            # {"approved": N, "constraints": K, "rejected": M}
     created_at: str = Field(default_factory=_now_iso)
     updated_at: str = Field(default_factory=_now_iso)
     approved_at: Optional[str] = None
+
+
+# ---------- SME review ----------
+RUBRIC_DIMENSIONS = [
+    "discrimination_power",
+    "job_fidelity",
+    "anchored_openness",
+    "judgment_over_recall",
+    "technical_accuracy",
+    "difficulty_calibration",
+    "rubric_quality",
+]
+
+
+class ReviewScores(BaseModel):
+    discrimination_power: int = Field(ge=1, le=5)
+    job_fidelity: int = Field(ge=1, le=5)
+    anchored_openness: int = Field(ge=1, le=5)
+    judgment_over_recall: int = Field(ge=1, le=5)
+    technical_accuracy: int = Field(ge=1, le=5)
+    difficulty_calibration: int = Field(ge=1, le=5)
+    rubric_quality: int = Field(ge=1, le=5)
+
+
+class CaseReviewCreate(BaseModel):
+    scores: ReviewScores
+    fabricated_specs_flag: bool = False
+    verdict: Literal["approved", "rejected"]
+    notes: str = Field(default="", max_length=4000)
+
+
+class CaseReview(BaseModel):
+    id: str = Field(default_factory=_new_id)
+    case_id: str
+    sme_id: str
+    scores: ReviewScores
+    fabricated_specs_flag: bool = False
+    verdict: Literal["approved", "rejected"]
+    notes: str = ""
+    reviewed_at: str = Field(default_factory=_now_iso)
+
+
+# ---------- Domain constraints (grounding) ----------
+ConstraintType = Literal["real_fact", "limit", "anti_pattern"]
+
+
+class DomainConstraintCreate(BaseModel):
+    domain_key: str = Field(min_length=1, max_length=200)
+    constraint_type: ConstraintType
+    text: str = Field(min_length=1, max_length=2000)
+
+
+class DomainConstraint(BaseModel):
+    id: str = Field(default_factory=_new_id)
+    domain_key: str
+    constraint_type: ConstraintType
+    text: str
+    added_by: str
+    created_at: str = Field(default_factory=_now_iso)
+
+
+# ---------- SME invite ----------
+class SMEInviteCreate(BaseModel):
+    email: EmailStr
+    full_name: str
+    password: str = Field(min_length=8, max_length=128)
 
 
 class CaseGenerateRequest(BaseModel):

@@ -59,4 +59,4 @@ async def current_manager(
     if not doc:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Manager not found")
     doc = doc_strip(doc)
-    return ManagerPublic(**{k: doc[k] for k in ("id", "email", "full_name", "company", "created_at") if k in doc})
+    return ManagerPublic(**{k: doc[k] for k in ("id", "email", "full_name", "company", "role", "created_at") if k in doc})
