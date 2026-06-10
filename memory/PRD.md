@@ -76,6 +76,16 @@ A hiring manager describes a role; ENCORE uses Claude to generate a tailored cas
 - Comparison Leaderboard panel appears on case detail when 2+ candidates have been evaluated.
 - 18/18 new backend pytest + previous 38/38 still green (74 total). Frontend 100% on report, decision flow, leaderboard.
 
+### Phase 4 — Polish & Gamification ✅
+- Public Landing page at `/` ("Hire on judgment. Not trivia.") for unauthenticated users; auto-redirects to `/dashboard` when signed in. Faux scored-report preview card showing the product's payoff above the fold.
+- Momentum Dashboard: 4 progress-ring stat cards (Roles created, Cases generated, Candidates scored, Decisions made) that fill toward next-milestone thresholds (1 → 3 → 5 → 10 / 25).
+- BadgeStrip with 9 understated milestones: first_role, first_case, first_approved, first_invite, first_submission, first_decision, first_hire, three_cases, five_candidates. Shows earned pills + a "Next:" row with a progress bar toward the next badge.
+- Loading-state copy with personality: "ENCORE is designing your case — choosing stakeholders, picking real constraints, drafting a rubric…" / "Scoring against the rubric…" / "Locking in your work and notifying the team…".
+- Empty states guide to the next action (open a case, create your first role).
+- TakeCase header tightened for mobile (390px) — smaller logo, smaller ring, hidden saved-indicator on phones, `break-words` on long case titles.
+- `GET /api/stats/manager` returns counts + computed badge milestones (no new DB collection).
+- 10/10 new backend pytest + prior 74/74 still green (84 total). Frontend 100% on Landing surfaces, momentum dashboard, badges, candidate-activity panel, mobile TakeCase. Zero console warnings.
+
 ## Backlog
 ### P0 — needed before Phase 2 sign-off by user
 - (None — Phase 1 acceptance is: signup → wizard → generate → edit → approve. All in place.)

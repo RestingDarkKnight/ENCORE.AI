@@ -215,7 +215,7 @@ function Welcome({ view, honorChecked, setHonorChecked, onBegin }) {
     >
       <div>
         <p className="encore-overline mb-2 flex items-center gap-2"><Sparkle weight="duotone" size={12} className="text-brand-sand" /> Work simulation</p>
-        <h1 className="font-display text-4xl sm:text-5xl font-black tracking-tighter leading-[1.05]">{view.case.title}</h1>
+        <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter leading-[1.05] break-words">{view.case.title}</h1>
         <p className="text-ink-soft mt-3">
           Hello{view.candidate_name ? `, ${view.candidate_name}` : ""}. You have <strong className="text-ink">{view.time_limit_minutes} minutes</strong> and {view.case.sections.length} sections to work through. Save is automatic.
         </p>
