@@ -63,17 +63,31 @@ A hiring manager describes a role; ENCORE uses Claude to generate a tailored cas
 - Manager-side response viewer endpoints (`/api/responses/by-assignment/{id}` + audio streaming) — UI in Phase 3.
 - 18/18 new backend pytest passing (+ previous 20/20 still green). All 8 frontend candidate-loop flows validated.
 
+### Phase 3 — Evaluation & Reporting ✅
+- Auto-evaluation on submit via FastAPI BackgroundTask (no-ops cleanly when `ANTHROPIC_API_KEY` is empty).
+- Manual `POST /api/responses/by-assignment/{id}/evaluate` (idempotent — returns existing eval; 503 with clear msg when no key).
+- Claude eval prompt includes rubric anchors and demands a verbatim `quote` from the candidate per dimension score.
+- Per-dimension `CriterionScore { dimension_id, name, score, weight, quote, justification }`; `Recommendation` enum (`strong_hire` | `hire` | `borderline` | `no_hire`); strengths, concerns, summary.
+- Configurable eval model via `CLAUDE_EVAL_MODEL` (falls back to `CLAUDE_MODEL`).
+- Decision tracking: `POST /api/decisions` upserts one Decision per response (`advance` | `hold` | `reject` + optional note).
+- Multi-candidate leaderboard at `/api/cases/{case_id}/leaderboard` — evaluated rows ranked by `overall_score` desc, then submitted-not-evaluated, then in-progress, then sent.
+- Manager UI: `/reports/:assignmentId` page — score ring + recommendation pill, summary, strengths/concerns cards, per-dimension breakdown with anchor bar + verbatim quote callouts, candidate work playback (audio + transcript), decision buttons + note.
+- Audio playback for `<audio>` tags uses `?t=<jwt>` query param fallback (HTML5 cannot send Authorization headers).
+- Comparison Leaderboard panel appears on case detail when 2+ candidates have been evaluated.
+- 18/18 new backend pytest + previous 38/38 still green (74 total). Frontend 100% on report, decision flow, leaderboard.
+
 ## Backlog
 ### P0 — needed before Phase 2 sign-off by user
 - (None — Phase 1 acceptance is: signup → wizard → generate → edit → approve. All in place.)
 - Live Claude round-trip — requires the user to provide `ANTHROPIC_API_KEY`.
 
-### P1 — Phase 3 (Evaluation & scoring)
-- Server-side Claude evaluation against the case's rubric → scored report.
-- Per-criterion score, justification, strengths, concerns, recommendation, summary.
-- Side-by-side ranking of candidates for a case/role.
-- Manager response viewer UI (audio playback, transcript display).
-- Optional: email digest of new submissions.
+### P1 — Phase 4 (whatever you spec next)
+- Force-rerun evaluation (`?force=true`) with calibration anchors.
+- Email digest of new submissions / decisions (SendGrid integration).
+- Multi-manager teams + role-based access.
+- Anonymized rubric calibration across roles.
+- Role-level analytics (avg score, time taken, drop-off).
+- GitHub auto-sync of /app to `RestingDarkKnight/ENCORE.AI` via Emergent GitHub flow.
 
 ### P3 — Nice-to-have
 - Role templates / starter library.

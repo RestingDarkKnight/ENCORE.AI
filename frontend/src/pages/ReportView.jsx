@@ -147,18 +147,18 @@ export default function ReportView() {
                 {recCfg.label}
               </span>
             </div>
-          ) : (
+          ) : a.status === "submitted" ? (
             <button
               type="button"
               onClick={runEvaluation}
-              disabled={evaluating || a.status !== "submitted"}
+              disabled={evaluating}
               data-testid="report-run-evaluation"
               className="inline-flex items-center gap-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-white rounded-lg px-4 py-2.5 transition-all hover:-translate-y-0.5"
             >
               <Sparkle size={14} weight="bold" />
               <span className="font-medium text-sm">{evaluating ? "Evaluating…" : "Evaluate with Claude"}</span>
             </button>
-          )}
+          ) : null}
         </div>
       </header>
 
@@ -271,7 +271,7 @@ export default function ReportView() {
       )}
 
       {/* Decision */}
-      {r && (
+      {r && a.status === "submitted" && (
         <section className="encore-card p-7" data-testid="decision-section">
           <p className="encore-overline mb-1 flex items-center gap-1.5"><Trophy size={12} /> Decision</p>
           <h2 className="font-display text-xl font-bold tracking-tight">What&rsquo;s the call?</h2>
@@ -347,5 +347,7 @@ function DimensionCard({ score, anchors }) {
         </blockquote>
       )}
     </div>
+  );
+}
   );
 }
