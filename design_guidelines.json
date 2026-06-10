@@ -1,0 +1,129 @@
+{
+  "project_name": "ENCORE",
+  "theme": "light",
+  "archetype": "Archetype 4 (Swiss & High-Contrast) + Organic touches",
+  "design_philosophy": "Calm, credible, and professionally gamified. The hiring manager dashboard is an operational B2B control room with high data density but minimal visual noise. The candidate experience is a focused, single-task interface utilizing the 'Bento focus' grid, characterized by generous negative space and subtle celebratory micro-interactions.",
+  "typography": {
+    "headings": {
+      "family": "Cabinet Grotesk",
+      "weights": ["500", "700", "900"],
+      "tracking": "tracking-tight",
+      "usage": "Use for all H1-H4 elements. Never center-align by default."
+    },
+    "body": {
+      "family": "Satoshi",
+      "weights": ["400", "500"],
+      "tracking": "tracking-normal",
+      "usage": "Use for all paragraphs, labels, and dense text."
+    },
+    "mono": {
+      "family": "JetBrains Mono",
+      "weights": ["400", "600"],
+      "usage": "Use for candidate code snippets, AI logs, and technical metrics."
+    },
+    "hierarchy_rules": {
+      "h1": "text-4xl sm:text-5xl font-black tracking-tighter",
+      "h2": "text-2xl sm:text-3xl font-bold tracking-tight",
+      "h3": "text-xl sm:text-2xl font-bold",
+      "overline": "text-xs font-bold uppercase tracking-[0.2em] text-accent-muted"
+    }
+  },
+  "colors": {
+    "background": {
+      "main": "#F7F8F6",
+      "surface": "#FFFFFF",
+      "overlay": "rgba(255, 255, 255, 0.7)"
+    },
+    "text": {
+      "primary": "#0A0F1A",
+      "secondary": "#525C6A",
+      "disabled": "#A0AAB5"
+    },
+    "brand": {
+      "primary": "#1A2E35",
+      "primary_hover": "#2C454E",
+      "accent_gamification": "#4A6B53",
+      "accent_ai_loading": "#A29061"
+    },
+    "border": {
+      "subtle": "rgba(10, 15, 26, 0.08)",
+      "focus": "#1A2E35"
+    },
+    "status": {
+      "success": "#4A6B53",
+      "warning": "#C78D38",
+      "error": "#964545"
+    }
+  },
+  "layout_and_spacing": {
+    "philosophy": "Generous Spacing (Tailwind Scale 2-3x normal). Focus on progressive disclosure for managers and single-task bento grids for candidates.",
+    "manager_dashboard": {
+      "grid": "grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6",
+      "cards": "border border-border/40 rounded-xl p-6 shadow-sm bg-white"
+    },
+    "candidate_experience": {
+      "grid": "grid-cols-1 md:grid-cols-8 lg:grid-cols-12 gap-8 md:gap-12",
+      "focus_area": "col-span-full md:col-start-3 md:col-span-8 p-8 md:p-12 bg-white rounded-2xl shadow-[0_8px_32px_rgba(10,15,26,0.04)] border border-border/40",
+      "alignment": "Strictly left-aligned content with massive horizontal padding."
+    },
+    "header": {
+      "style": "Crystal Glassmorphism",
+      "classes": "sticky top-0 z-50 backdrop-blur-xl bg-white/70 border-b border-black/5"
+    }
+  },
+  "components_and_surfaces": {
+    "buttons": {
+      "primary": "bg-[#1A2E35] text-white hover:bg-[#2C454E] hover:-translate-y-0.5 transition-all rounded-lg px-6 py-2.5 shadow-sm",
+      "secondary": "bg-transparent text-[#1A2E35] border border-black/10 hover:border-black/30 hover:bg-black/5 transition-all rounded-lg px-6 py-2.5"
+    },
+    "forms": {
+      "inputs": "bg-transparent border border-black/15 rounded-lg px-4 py-3 focus:ring-2 focus:ring-[#1A2E35]/20 focus:border-[#1A2E35] transition-all",
+      "labels": "text-sm font-medium text-[#525C6A] mb-1.5 block"
+    },
+    "gamification": {
+      "progress_rings": "SVG based, using #4A6B53 with stroke-dasharray transitions. Include subtle particle bursts (framer-motion) on 100% completion.",
+      "badges": "Neumorphic subtle lift: bg-white border border-black/5 shadow-sm rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#4A6B53]"
+    },
+    "shadcn_overrides": {
+      "cards": "Remove default heavy shadows. Use border-black/5 with drop-shadow-sm. Increase internal padding to p-6 or p-8.",
+      "dialogs": "backdrop-blur-md bg-black/20 for overlay. Dialog window must have rounded-2xl and p-8.",
+      "tabs": "Override fixed h-9 on list. Use transparent backgrounds with border-b-2 active states instead of pill-bubbles for a mature B2B look."
+    }
+  },
+  "motion_and_interactions": {
+    "library": "framer-motion",
+    "page_transitions": {
+      "initial": { "opacity": 0, "y": 10 },
+      "animate": { "opacity": 1, "y": 0 },
+      "transition": { "duration": 0.4, "ease": [0.22, 1, 0.36, 1] }
+    },
+    "ai_loading_state": {
+      "description": "Do not use standard spinners. Use a staggered text reveal or a glowing 'Tracing Beam' border on the card to indicate Claude is generating the case study.",
+      "classes": "relative overflow-hidden before:absolute before:inset-0 before:-translate-x-full before:animate-[shimmer_2s_infinite] before:bg-gradient-to-r before:from-transparent before:via-black/5 before:to-transparent"
+    },
+    "hover_states": "All interactive elements must lift slightly (-translate-y-0.5) and shift color. No element should rely on cursor alone."
+  },
+  "icons": {
+    "library": "@phosphor-icons/react",
+    "style": "Duotone for candidate gamification badges and empty states. Regular weight for manager dashboard data tables and dense UI."
+  },
+  "media_assets": {
+    "abstract_textures": {
+      "description": "Use these for candidate focus-mode backgrounds (subtle opacity) or login screen split-pane designs.",
+      "urls": [
+        "https://images.unsplash.com/photo-1776431101254-e7d7bcb8a0e2?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODF8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMGNhbG0lMjBtaW5pbWFsaXN0JTIwdGV4dHVyZXxlbnwwfHx8fDE3ODEwNjAwODB8MA&ixlib=rb-4.1.0&q=85",
+        "https://images.unsplash.com/photo-1758532843609-43d98fa8c23f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODF8MHwxfHNlYXJjaHwyfHxhYnN0cmFjdCUyMGNhbG0lMjBtaW5pbWFsaXN0JTIwdGV4dHVyZXxlbnwwfHx8fDE3ODEwNjAwODB8MA&ixlib=rb-4.1.0&q=85"
+      ]
+    },
+    "office_environments": {
+      "description": "Use for the marketing landing page or manager-side auth backgrounds to establish B2B credibility.",
+      "urls": [
+        "https://images.unsplash.com/photo-1497366754035-f200968a6e72?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2MzR8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBvZmZpY2UlMjBnbGFzcyUyMGFyY2hpdGVjdHVyZXxlbnwwfHx8fDE3ODEwNjAwODB8MA&ixlib=rb-4.1.0&q=85",
+        "https://images.unsplash.com/photo-1531972111231-7482a960e109?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2MzR8MHwxfHNlYXJjaHwyfHxtb2Rlcm4lMjBvZmZpY2UlMjBnbGFzcyUyMGFyY2hpdGVjdHVyZXxlbnwwfHx8fDE3ODEwNjAwODB8MA&ixlib=rb-4.1.0&q=85"
+      ]
+    }
+  },
+  "testing_attributes": {
+    "rule": "All interactive and key informational elements MUST include a data-testid attribute in kebab-case."
+  }
+}
