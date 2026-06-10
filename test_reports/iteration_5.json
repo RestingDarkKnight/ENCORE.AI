@@ -1,0 +1,37 @@
+{
+  "summary": "ENCORE Phase 4 — Polish & Gamification fully validated. Backend: 10/10 new pytest tests pass (TestManagerStats: requires-auth, full shape, demo seed counts + 8/9 badges earned w/ five_candidates progress=2/5, scoped per manager; TestRegressionSmoke: health, login, list/create roles, /cases/generate 503, leaderboard). Frontend Playwright verified Landing page (all 6 data-testids + 'Hire on judgment. Not trivia.' headline + faux report card '3.8' + HIRE pill + blockquote + 4 step cards 01-04), CTAs route correctly (landing-signup/hero-cta-primary/closing-cta → /signup; landing-signin/hero-cta-secondary → /login), authenticated `/` redirects to /dashboard, protected routes still gate, Dashboard momentum-section with 4 stat cards (stat-roles=16, stat-cases=9, stat-evaluated=2, stat-decisions=1) each w/ animated svg progress ring + 'Milestone reached'/'Next milestone at N' subtext, BadgeStrip shows 8 earned pills + badge-next progress row, candidate-activity-summary rendered (invited>0). Mobile TakeCase header is tight (no horizontal scroll after Begin, progress-ring + 179:58 timer visible, brand ENCORE visible). 0 console errors, 0 strokeDashoffset warnings (regression from iteration 4 fixed). Loading copy strings ('ENCORE is designing your case…', 'Scoring against the rubric…', 'Locking in your work…') all confirmed in source RoleDetail.jsx/ReportView.jsx/TakeCase.jsx.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/take/{token} welcome page on mobile (390x844)", "issues": ["Welcome (pre-Begin) page has horizontal overflow: scrollWidth=462 vs clientWidth=390. Caused by the long un-broken seeded title 'TEST_Phase2_FoundryEs…'. The IN-CASE header (after Begin) is correctly tight (scrollWidth=390). Suggest adding `break-words` / `overflow-wrap: anywhere` to the case title heading, or shorter seeded titles. SEED-DATA + minor CSS."]},
+      {"screen": "Landing — How it works step 04", "issues": ["The spec lists 4 step labels as 'Describe / Generate / Candidate takes / Evaluates'. innerText scan for the word 'Evaluate' returned NOT FOUND on the page (steps 01 Describe, 02 Generate, 03 Candidate, 04 = different copy — not 'Evaluates'). Copy deviation from spec — cosmetic. Step 04 still has icon + 04 number; just the heading word differs."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_encore_phase4.py",
+    "/app/test_reports/pytest/encore_phase4.xml"
+  ],
+  "action_items": [
+    "(Optional) Add `break-words` / `overflow-wrap: anywhere` to the case title on TakeCase welcome page so long titles don't cause horizontal overflow on 390px width.",
+    "(Optional) Confirm step 04 label in Landing 'How it works' matches the agreed spec — current rendering doesn't contain the word 'Evaluate'/'Evaluates'."
+  ],
+  "critical_code_review_comments": [
+    "routes_stats.manager_stats: counts use proper manager_id scoping for roles/cases/assignments/decisions. Evaluated count joins via case_id (`evaluations` collection has no manager_id) — verified scoped correctly because the $in list is the manager's own case ids. Manager B isolation test confirms zero leakage.",
+    "Badge logic: earned_at uses sort by created_at/approved_at/submitted_at/decided_at ascending — first-trigger semantics correct. _badge() helper enforces next_at=None when earned and earned_at=None when not earned; verified in API shape.",
+    "Models.ManagerStats response: all integer fields are ints, badges all 9 ids present (first_role, first_case, first_approved, first_invite, first_submission, first_decision, first_hire, three_cases, five_candidates) and shape matches spec.",
+    "Landing page: hero copy, faux report card (THE FOUNDRY ESCAPE / Alex Tanaka / 3.8 ring / HIRE pill / blockquote / 4 dimension bars Investigation rigor, Trade-off reasoning, Stakeholder comms, Systems thinking), 4 step cards, closing CTA — all data-testids present, all CTAs route correctly.",
+    "Root component: authenticated user hitting `/` correctly redirects to /dashboard (verified via direct navigation after login).",
+    "Dashboard: 4 MomentumCards render integer counts (16/9/2/1) + progress rings (svg circle present) + milestone subtext ('Milestone reached' on saturated, 'Next milestone at N' on unsaturated). Badge strip pills present for 8 earned milestones; five_candidates is the only unearned (progress 0.4 → bar visible in badge-next row).",
+    "framer-motion strokeDashoffset warning from iteration 4 is GONE — 0 warnings captured on Landing, Dashboard, TakeCase, and Reports pages. Initial values now provided for both ProgressRing and ScoreRing."
+  ],
+  "updated_files": ["/app/backend/tests/test_encore_phase4.py (new)"],
+  "success_rate": {"backend": "100% (10/10 phase-4 + prior 18+18+20 still green)", "frontend": "100% on Landing surfaces + nav + auth redirect + Dashboard momentum/badges/candidate-activity + mobile TakeCase post-Begin. 2 cosmetic design notes (long-title overflow on TakeCase welcome, step-04 copy)."},
+  "test_credentials": "demo.manager@encore.ai / Encore-Phase1-2026!",
+  "seed_data_creation": "Phase 4 tests rely on existing Phase 1-3 seed data + create one TEST_P4_Role via POST /api/roles for the smoke regression. No direct Mongo writes in Phase 4.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Phase 4 endpoints to know: GET /api/stats/manager returns {roles,cases,approved_cases,invited,submitted,evaluated,decisions,advanced,badges[9]}. The 9 badge ids are first_role, first_case, first_approved, first_invite, first_submission, first_decision, first_hire, three_cases, five_candidates. On demo seed: 8 are earned, five_candidates progresses at evaluated/5. Frontend data-testids added: landing-hero, landing-brand, landing-signin, landing-signup, hero-cta-primary, hero-cta-secondary, closing-cta, momentum-section, stat-roles, stat-cases, stat-evaluated, stat-decisions, badge-strip, badge-{id}, badge-next, candidate-activity-summary, candidate-activity-empty. The case-generate-button is preemptively DISABLED when ANTHROPIC_API_KEY is empty, so the inline 'ENCORE is designing your case…' copy cannot be triggered visually in current env — verified in source at /app/frontend/src/pages/RoleDetail.jsx:114. Same for 'Scoring against the rubric…' at ReportView.jsx:160 and 'Locking in your work…' at TakeCase.jsx:194.",
+  "rca of the issue": "No bugs found. Two cosmetic notes: (1) TakeCase welcome page horizontal overflow at 390px width is caused by an unbreakable long word in a TEST_ seeded title — fixable with `break-words` CSS on the case title; (2) Step-04 heading on Landing does not contain the word 'Evaluate'/'Evaluates' as the spec implied; harmless copy variance."
+}

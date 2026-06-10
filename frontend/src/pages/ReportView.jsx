@@ -33,6 +33,7 @@ function ScoreRing({ value, max = 5, size = 72, stroke = 6 }) {
           cx={size / 2} cy={size / 2} r={r} fill="none"
           stroke="#1A2E35" strokeWidth={stroke} strokeLinecap="round"
           strokeDasharray={c}
+          initial={{ strokeDashoffset: c }}
           animate={{ strokeDashoffset: c - c * pct }}
           transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
         />
@@ -156,7 +157,7 @@ export default function ReportView() {
               className="inline-flex items-center gap-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-white rounded-lg px-4 py-2.5 transition-all hover:-translate-y-0.5"
             >
               <Sparkle size={14} weight="bold" />
-              <span className="font-medium text-sm">{evaluating ? "Evaluating…" : "Evaluate with Claude"}</span>
+              <span className="font-medium text-sm">{evaluating ? "Scoring against the rubric…" : "Evaluate with Claude"}</span>
             </button>
           ) : null}
         </div>
@@ -347,7 +348,5 @@ function DimensionCard({ score, anchors }) {
         </blockquote>
       )}
     </div>
-  );
-}
   );
 }

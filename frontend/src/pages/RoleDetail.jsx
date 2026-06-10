@@ -111,7 +111,7 @@ export default function RoleDetail() {
             <h2 className="font-display text-xl font-bold tracking-tight">Generate case study with Claude</h2>
             <p className="text-sm text-ink-soft mt-1">
               {generating
-                ? "ENCORE is designing your case…"
+                ? "ENCORE is designing your case — choosing stakeholders, picking real constraints, drafting a rubric…"
                 : "Claude drafts a sectioned work-simulation case with a weighted rubric. ~30–60 seconds."}
             </p>
           </div>

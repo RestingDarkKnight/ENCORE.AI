@@ -1,19 +1,44 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import api from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { Plus, Briefcase, Sparkle, CheckCircle, ArrowRight } from "@phosphor-icons/react";
+import {
+  Plus, Briefcase, Sparkle, CheckCircle, ArrowRight, UsersThree, ChartBar, ScanSmiley,
+} from "@phosphor-icons/react";
+import BadgeStrip from "@/components/BadgeStrip";
 
-function StatCard({ label, value, icon: Icon, testid }) {
+function MomentumCard({ label, value, target, icon: Icon, testid, accent = "brand" }) {
+  const safeTarget = Math.max(1, target);
+  const pct = Math.min(1, value / safeTarget);
+  const stroke = "#1A2E35";
   return (
-    <div className="encore-card p-6" data-testid={testid}>
-      <div className="flex items-center justify-between mb-4">
-        <p className="encore-overline">{label}</p>
-        <div className="h-8 w-8 rounded-md bg-brand/5 text-brand flex items-center justify-center">
-          <Icon weight="duotone" size={18} />
+    <div className="encore-card p-6 flex items-center gap-5" data-testid={testid}>
+      <div className="relative h-16 w-16 shrink-0">
+        <svg viewBox="0 0 36 36" className="h-16 w-16 -rotate-90">
+          <circle cx="18" cy="18" r="15.915" fill="none" stroke="rgba(10,15,26,0.08)" strokeWidth="3" />
+          <motion.circle
+            cx="18" cy="18" r="15.915" fill="none"
+            stroke={stroke} strokeWidth="3" strokeLinecap="round"
+            strokeDasharray="100"
+            initial={{ strokeDashoffset: 100 }}
+            animate={{ strokeDashoffset: 100 - pct * 100 }}
+            transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <Icon weight="duotone" size={18} className={`text-${accent}`} />
         </div>
       </div>
-      <p className="font-display text-4xl font-black tracking-tighter text-ink">{value}</p>
+      <div className="min-w-0">
+        <p className="encore-overline mb-1">{label}</p>
+        <p className="font-display text-3xl font-black tracking-tighter leading-none">{value}</p>
+        {target > 1 && (
+          <p className="text-[11px] text-ink-soft mt-1">
+            {value < target ? `Next milestone at ${target}` : "Milestone reached"}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
@@ -21,34 +46,32 @@ function StatCard({ label, value, icon: Icon, testid }) {
 export default function Dashboard() {
   const { manager } = useAuth();
   const [roles, setRoles] = useState([]);
-  const [approvedCount, setApprovedCount] = useState(0);
+  const [stats, setStats] = useState(null);
   const [health, setHealth] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const [rolesRes, healthRes] = await Promise.all([
+        const [rolesRes, statsRes, healthRes] = await Promise.all([
           api.get("/roles"),
+          api.get("/stats/manager").catch(() => ({ data: null })),
           api.get("/health").catch(() => null),
         ]);
         setRoles(rolesRes.data);
+        setStats(statsRes.data);
         setHealth(healthRes?.data ?? null);
-
-        // Count approved cases across all roles
-        const counts = await Promise.all(
-          rolesRes.data.map((r) =>
-            api.get(`/cases/role/${r.id}`).then((r2) => r2.data.filter((c) => c.status === "approved").length).catch(() => 0)
-          )
-        );
-        setApprovedCount(counts.reduce((a, b) => a + b, 0));
       } finally {
         setLoading(false);
       }
     })();
   }, []);
 
-  const totalCases = roles.reduce((sum, r) => sum + (r.case_count || 0), 0);
+  // Compute next-milestone targets
+  const target = (count, breakpoints = [1, 3, 5, 10]) => {
+    const next = breakpoints.find((b) => count < b);
+    return next ?? breakpoints[breakpoints.length - 1];
+  };
 
   return (
     <div className="space-y-10" data-testid="dashboard-page">
@@ -73,12 +96,18 @@ export default function Dashboard() {
         </Link>
       </header>
 
-      <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard label="Roles created" value={loading ? "—" : roles.length} icon={Briefcase} testid="stat-roles" />
-        <StatCard label="Cases generated" value={loading ? "—" : totalCases} icon={Sparkle} testid="stat-cases" />
-        <StatCard label="Approved" value={loading ? "—" : approvedCount} icon={CheckCircle} testid="stat-approved" />
+      {/* Momentum rings */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" data-testid="momentum-section">
+        <MomentumCard label="Roles created" value={stats?.roles ?? 0} target={target(stats?.roles ?? 0)} icon={Briefcase} testid="stat-roles" />
+        <MomentumCard label="Cases generated" value={stats?.cases ?? 0} target={target(stats?.cases ?? 0, [1, 3, 5, 10])} icon={Sparkle} testid="stat-cases" />
+        <MomentumCard label="Candidates scored" value={stats?.evaluated ?? 0} target={target(stats?.evaluated ?? 0, [1, 5, 10, 25])} icon={ChartBar} testid="stat-evaluated" />
+        <MomentumCard label="Decisions made" value={stats?.decisions ?? 0} target={target(stats?.decisions ?? 0, [1, 5, 10, 25])} icon={CheckCircle} testid="stat-decisions" />
       </section>
 
+      {/* Badges */}
+      {stats?.badges && <BadgeStrip badges={stats.badges} />}
+
+      {/* AI engine status */}
       <section data-testid="claude-status-section" className="encore-card p-6">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
@@ -115,7 +144,7 @@ export default function Dashboard() {
         </div>
 
         {loading ? (
-          <div className="encore-card p-10 text-center text-ink-soft">Loading roles…</div>
+          <div className="encore-card p-10 text-center text-ink-soft" data-testid="dashboard-loading">Loading roles…</div>
         ) : roles.length === 0 ? (
           <div className="encore-card p-12 text-center" data-testid="dashboard-empty-state">
             <div className="mx-auto h-12 w-12 rounded-full bg-brand/5 text-brand flex items-center justify-center mb-4">
@@ -157,12 +186,45 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Candidate activity */}
         <div className="mt-10">
-          <h2 className="font-display text-2xl font-bold tracking-tight mb-5">Recent candidate activity</h2>
-          <div className="encore-card p-8 text-center text-ink-soft" data-testid="candidate-activity-empty">
-            <p className="text-sm">Assignments and submissions will appear here once you start inviting candidates.</p>
-            <p className="text-xs mt-1 opacity-70">Coming in Phase 2.</p>
+          <div className="flex items-baseline justify-between mb-5">
+            <h2 className="font-display text-2xl font-bold tracking-tight">Candidate activity</h2>
+            {stats?.invited > 0 && (
+              <span className="text-xs text-ink-soft">{stats.invited} invited · {stats.submitted} submitted · {stats.evaluated} scored</span>
+            )}
           </div>
+          {!stats?.invited ? (
+            <div className="encore-card p-10 text-center" data-testid="candidate-activity-empty">
+              <div className="mx-auto h-12 w-12 rounded-full bg-brand-moss/5 text-brand-moss flex items-center justify-center mb-4">
+                <UsersThree weight="duotone" size={22} />
+              </div>
+              <h3 className="font-display text-lg font-bold tracking-tight mb-1">No candidates invited yet</h3>
+              <p className="text-sm text-ink-soft max-w-md mx-auto mb-5">
+                Approve a case, then send the unique link to candidates from inside the case page.
+              </p>
+              {roles.length > 0 ? (
+                <Link to={`/roles/${roles[0].id}`} data-testid="empty-state-go-to-case" className="inline-flex items-center gap-2 text-sm font-medium border border-black/15 hover:border-black/30 hover:bg-black/[0.02] rounded-lg px-4 py-2">
+                  Open a case <ArrowRight size={13} />
+                </Link>
+              ) : (
+                <Link to="/roles/new" className="inline-flex items-center gap-2 text-sm font-medium border border-black/15 hover:border-black/30 hover:bg-black/[0.02] rounded-lg px-4 py-2">
+                  Create your first role <ArrowRight size={13} />
+                </Link>
+              )}
+            </div>
+          ) : (
+            <div className="encore-card p-6 flex items-center gap-4 flex-wrap" data-testid="candidate-activity-summary">
+              <div className="flex items-center gap-2 text-sm">
+                <ScanSmiley weight="duotone" size={18} className="text-brand-moss" />
+                <span className="text-ink">
+                  {stats.advanced > 0
+                    ? <>You&rsquo;ve advanced <strong>{stats.advanced}</strong> candidate{stats.advanced === 1 ? "" : "s"} so far.</>
+                    : <>{stats.submitted} candidate{stats.submitted === 1 ? "" : "s"} have submitted. Open a case to see scored reports.</>}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </section>
     </div>

@@ -18,6 +18,7 @@ function fmtMmSs(totalSec) {
 function ProgressRing({ value, size = 56, stroke = 4, label }) {
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
+  const offset = c - (c * value) / 100;
   return (
     <div className="relative" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
@@ -26,7 +27,8 @@ function ProgressRing({ value, size = 56, stroke = 4, label }) {
           cx={size / 2} cy={size / 2} r={r} fill="none"
           stroke="#4A6B53" strokeWidth={stroke} strokeLinecap="round"
           strokeDasharray={c}
-          animate={{ strokeDashoffset: c - (c * value) / 100 }}
+          initial={{ strokeDashoffset: c }}
+          animate={{ strokeDashoffset: offset }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         />
       </svg>
@@ -132,33 +134,33 @@ export default function TakeCase() {
     <div className="min-h-screen bg-canvas text-ink">
       {/* Sticky header */}
       <header className="encore-glass-header" data-testid="take-header">
-        <div className="mx-auto max-w-4xl px-6 lg:px-10 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-md bg-brand flex items-center justify-center text-white">
-              <Compass weight="duotone" size={18} />
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-10 h-14 sm:h-16 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-md bg-brand flex items-center justify-center text-white shrink-0">
+              <Compass weight="duotone" size={16} />
             </div>
-            <span className="font-display font-black text-lg tracking-tight">ENCORE</span>
-            <span className="hidden md:inline encore-overline ml-3">{view.case.title}</span>
+            <span className="font-display font-black text-base sm:text-lg tracking-tight">ENCORE</span>
+            <span className="hidden lg:inline encore-overline ml-3 truncate">{view.case.title}</span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             {stage === "sections" && (
               <>
-                <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-ink-soft" data-testid="take-saved-indicator">
+                <span className="hidden md:inline-flex items-center gap-1.5 text-xs font-medium text-ink-soft" data-testid="take-saved-indicator">
                   <FloppyDisk size={12} />
                   {savedAt ? `Saved ${fmtMmSs(Math.max(0, Math.floor((Date.now() - savedAt.getTime()) / 1000)))} ago` : "Autosave on"}
                 </span>
-                <span className="inline-flex items-center gap-1.5 text-sm font-medium text-ink" data-testid="take-timer">
+                <span className="inline-flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm font-medium text-ink tabular-nums" data-testid="take-timer">
                   <ClockCountdown size={14} />
                   {fmtMmSs(remainSec)}
                 </span>
-                <ProgressRing value={progressPct} label={`${sectionIdx + 1}/${total}`} />
+                <ProgressRing value={progressPct} label={`${sectionIdx + 1}/${total}`} size={44} stroke={3} />
               </>
             )}
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-6 lg:px-10 py-10">
+      <main className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
         <AnimatePresence mode="wait">
           {stage === "welcome" && (
             <Welcome
@@ -189,7 +191,7 @@ export default function TakeCase() {
           )}
 
           {stage === "submitting" && (
-            <FullPageMessage>Submitting your work…</FullPageMessage>
+            <FullPageMessage>Locking in your work and notifying the team…</FullPageMessage>
           )}
 
           {stage === "done" && <DoneScreen view={view} />}
