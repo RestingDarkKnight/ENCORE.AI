@@ -8,7 +8,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from claude_service import call_claude_json, has_api_key, smoke_test
 from db import get_db
-from grounding import build_grounding_block, log_generation, make_domain_key
 from models import (
     Case,
     CaseGenerateRequest,
@@ -115,24 +114,12 @@ async def generate_case(payload: CaseGenerateRequest, manager: ManagerPublic = D
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Role not found")
     role = doc_strip(role)
 
-    domain_key = make_domain_key(role.get("industry"), role.get("job_title"))
-    grounding_text, counts = await build_grounding_block(domain_key)
-    log_generation(role["id"], domain_key, counts)
-
-    user_prompt_parts = []
-    if grounding_text:
-        user_prompt_parts.append(grounding_text)
-        user_prompt_parts.append("")
-
-    user_prompt_parts.append(
-        "Design a work-simulation case study for the role described below."
+    user_prompt = (
+        "Design a work-simulation case study for the role described below.\n\n"
+        f"{_role_brief(role)}\n"
+        f"Additional notes from the hiring manager: {payload.notes or 'none'}\n\n"
+        "Return JSON only, matching the schema in the system message."
     )
-    user_prompt_parts.append("")
-    user_prompt_parts.append(_role_brief(role))
-    user_prompt_parts.append(f"Additional notes from the hiring manager: {payload.notes or 'none'}")
-    user_prompt_parts.append("")
-    user_prompt_parts.append("Return JSON only, matching the schema in the system message.")
-    user_prompt = "\n".join(user_prompt_parts)
 
     try:
         draft = await call_claude_json(
@@ -156,9 +143,6 @@ async def generate_case(payload: CaseGenerateRequest, manager: ManagerPublic = D
         estimated_minutes=draft.estimated_minutes,
         model_used=os.environ.get("CLAUDE_MODEL", "claude-opus-4-8"),
         model_version=os.environ.get("CLAUDE_MODEL", "claude-opus-4-8"),
-        review_status="pending_review",
-        domain_key=domain_key,
-        grounded_on=counts,
     )
     await get_db().cases.insert_one(case.model_dump())
     return case

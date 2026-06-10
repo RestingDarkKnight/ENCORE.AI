@@ -35,13 +35,13 @@ class ManagerLogin(BaseModel):
 
 class ManagerPublic(ManagerBase):
     id: str
-    role: Literal["manager", "candidate", "sme"] = "manager"
+    role: Literal["manager", "candidate"] = "manager"
     created_at: str
 
 
 class ManagerDB(ManagerBase):
     id: str = Field(default_factory=_new_id)
-    role: Literal["manager", "candidate", "sme"] = "manager"
+    role: Literal["manager", "candidate"] = "manager"
     password_hash: str
     created_at: str = Field(default_factory=_now_iso)
 
@@ -119,13 +119,14 @@ class CaseStudyDraft(BaseModel):
 ReviewStatus = Literal["pending_review", "approved", "rejected"]
 
 
+ReviewStatus = Literal["pending_review", "approved", "rejected"]
+
+
 class Case(BaseModel):
     id: str = Field(default_factory=_new_id)
     role_id: str
     manager_id: str
     status: Literal["draft", "approved", "archived"] = "draft"
-    review_status: Optional[ReviewStatus] = None  # SME pipeline (None = legacy/not routed)
-    domain_key: Optional[str] = None              # Normalized industry+title for grounding
     title: str
     scenario_text: str
     sections: List[CaseSection]
@@ -133,7 +134,6 @@ class Case(BaseModel):
     estimated_minutes: int = 60
     model_used: Optional[str] = None
     model_version: Optional[str] = None
-    grounded_on: Optional[dict] = None            # {"approved": N, "constraints": K, "rejected": M}
     created_at: str = Field(default_factory=_now_iso)
     updated_at: str = Field(default_factory=_now_iso)
     approved_at: Optional[str] = None

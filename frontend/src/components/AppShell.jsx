@@ -11,13 +11,11 @@ export default function AppShell({ children }) {
     navigate("/login");
   };
 
-  const isSME = manager?.role === "sme";
-
   return (
     <div className="min-h-screen bg-canvas text-ink">
       <header className="encore-glass-header" data-testid="app-header">
         <div className="mx-auto max-w-7xl px-6 lg:px-10 h-16 flex items-center justify-between">
-          <Link to={isSME ? "/sme" : "/dashboard"} className="flex items-center gap-2.5" data-testid="brand-home-link">
+          <Link to="/dashboard" className="flex items-center gap-2.5" data-testid="brand-home-link">
             <div className="h-8 w-8 rounded-md bg-brand flex items-center justify-center text-white">
               <Compass weight="duotone" size={18} />
             </div>
@@ -47,17 +45,6 @@ export default function AppShell({ children }) {
               }
             >
               Roles
-            </NavLink>
-            <NavLink
-              to="/constraints"
-              data-testid="nav-constraints"
-              className={({ isActive }) =>
-                `px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  isActive ? "text-ink bg-black/[0.04]" : "text-ink-soft hover:text-ink"
-                }`
-              }
-            >
-              Constraints
             </NavLink>
             <div className="mx-2 h-5 w-px bg-black/10" />
             <div className="flex items-center gap-2 pl-1" data-testid="manager-pill">
