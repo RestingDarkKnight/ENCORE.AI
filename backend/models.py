@@ -82,6 +82,7 @@ class RoleUpdate(BaseModel):
 class Role(RoleCreate):
     id: str = Field(default_factory=_new_id)
     manager_id: str
+    archived: bool = False
     created_at: str = Field(default_factory=_now_iso)
     case_count: int = 0
 

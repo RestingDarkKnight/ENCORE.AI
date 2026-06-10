@@ -301,8 +301,45 @@ async def reopen_case(case_id: str, manager: ManagerPublic = Depends(current_man
     return Case(**doc_strip(doc))
 
 
-@router.get("/role/{role_id}", response_model=List[Case])
-async def list_cases_for_role(role_id: str, manager: ManagerPublic = Depends(current_manager)):
+@router.delete("/{case_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_case(case_id: str, manager: ManagerPublic = Depends(current_manager)):
+    """Hard-delete a case. Refused if any candidate has SUBMITTED — archive instead."""
+    db = get_db()
+    existing = await db.cases.find_one({"id": case_id, "manager_id": manager.id})
+    if not existing:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Case not found")
+
+    submitted_count = await db.assignments.count_documents({"case_id": case_id, "status": "submitted"})
+    if submitted_count > 0:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "This case has submitted responses. Archive it instead — candidate data should not be destroyed.",
+        )
+
+    # Cascade: assignments + their responses + evaluations + decisions
+    assignment_ids = [a["id"] async for a in db.assignments.find({"case_id": case_id}, {"id": 1})]
+    if assignment_ids:
+        response_ids = [r["id"] async for r in db.responses.find({"assignment_id": {"$in": assignment_ids}}, {"id": 1})]
+        if response_ids:
+            await db.evaluations.delete_many({"response_id": {"$in": response_ids}})
+            await db.decisions.delete_many({"response_id": {"$in": response_ids}})
+            await db.responses.delete_many({"assignment_id": {"$in": assignment_ids}})
+        await db.assignments.delete_many({"case_id": case_id})
+
+    await db.cases.delete_one({"id": case_id})
+    return None
+
+
+@router.post("/{case_id}/archive", response_model=Case)
+async def archive_case(case_id: str, manager: ManagerPublic = Depends(current_manager)):
+    res = await get_db().cases.update_one(
+        {"id": case_id, "manager_id": manager.id},
+        {"$set": {"status": "archived", "updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Case not found")
+    doc = await get_db().cases.find_one({"id": case_id})
+    return Case(**doc_strip(doc))
     role = await get_db().roles.find_one({"id": role_id, "manager_id": manager.id})
     if not role:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Role not found")
