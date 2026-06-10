@@ -222,7 +222,53 @@ async def submit_take(token: str, payload: SubmitRequest, background_tasks: Back
         {"id": a["id"]},
         {"$set": {"status": "submitted", "submitted_at": now}},
     )
+
+    # Trigger Claude evaluation asynchronously (never blocks submit).
+    background_tasks.add_task(_auto_evaluate, a["id"])
+
     return await get_take(token)
+
+
+async def _auto_evaluate(assignment_id: str) -> None:
+    """Best-effort: kick off Claude evaluation after submit. Swallows errors."""
+    from claude_service import has_api_key
+    from evaluation import eval_model_name, evaluate_response
+    from models import Evaluation
+
+    if not has_api_key():
+        logger.info("Skipping auto-evaluation: ANTHROPIC_API_KEY not set (assignment=%s)", assignment_id)
+        return
+    db = get_db()
+    try:
+        a = await db.assignments.find_one({"id": assignment_id})
+        if not a:
+            return
+        r = await db.responses.find_one({"assignment_id": assignment_id})
+        if not r:
+            return
+        # Skip if already evaluated
+        if await db.evaluations.find_one({"response_id": r["id"]}):
+            return
+        case = await db.cases.find_one({"id": a["case_id"]})
+        if not case:
+            return
+        draft = await evaluate_response(doc_strip(case), doc_strip(r))
+        evaluation = Evaluation(
+            response_id=r["id"],
+            assignment_id=assignment_id,
+            case_id=a["case_id"],
+            scores=draft.scores,
+            overall_score=draft.overall_score,
+            recommendation=draft.recommendation,
+            strengths=draft.strengths,
+            concerns=draft.concerns,
+            summary=draft.summary,
+            model_used=eval_model_name(),
+        )
+        await db.evaluations.insert_one(evaluation.model_dump())
+        logger.info("Auto-evaluation stored for assignment=%s", assignment_id)
+    except Exception as e:  # noqa: BLE001
+        logger.exception("Auto-evaluation failed for %s: %s", assignment_id, e)
 
 
 # ---------- Audio streaming (auth-gated via query param for the candidate's own clip) ----------

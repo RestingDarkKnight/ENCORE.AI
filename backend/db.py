@@ -38,6 +38,10 @@ async def ensure_indexes() -> None:
     await db.responses.create_index("assignment_id", unique=True)
     # Evaluations - by response
     await db.evaluations.create_index("response_id", unique=True)
+    await db.evaluations.create_index("case_id")
+    # Decisions - by response (one current decision per response)
+    await db.decisions.create_index("response_id", unique=True)
+    await db.decisions.create_index("manager_id")
 
 
 def close_client() -> None:

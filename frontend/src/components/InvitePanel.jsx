@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import api from "@/lib/api";
 import { toast } from "sonner";
-import { Copy, PaperPlaneTilt, Check, Envelope, ClockClockwise, CheckCircle, Hourglass } from "@phosphor-icons/react";
+import { Copy, PaperPlaneTilt, Check, Envelope, ClockClockwise, CheckCircle, Hourglass, ChartBar } from "@phosphor-icons/react";
 
 const STATUS_PILL = {
   sent: { label: "Invited", cls: "bg-canvas border-black/10 text-ink-soft", icon: PaperPlaneTilt },
@@ -149,7 +150,17 @@ export default function InvitePanel({ caseId, caseStatus }) {
                   <p className="text-xs text-ink-soft truncate">{a.candidate_email} · {a.time_limit_minutes}-min limit</p>
                 </div>
 
-                <div className="flex items-center gap-2 min-w-0">
+                <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                  {a.status === "submitted" && (
+                    <Link
+                      to={`/reports/${a.id}`}
+                      data-testid={`assignment-view-report-${a.id}`}
+                      className="inline-flex items-center gap-1.5 text-xs font-medium bg-brand text-white hover:bg-brand-hover rounded-lg px-3 py-1.5"
+                    >
+                      <ChartBar size={12} weight="bold" />
+                      View report
+                    </Link>
+                  )}
                   <code className="text-[11px] font-mono bg-canvas border border-black/[0.06] rounded px-2 py-1 truncate max-w-[260px]" title={linkFor(a.token)}>
                     /take/{a.token.slice(0, 12)}…
                   </code>

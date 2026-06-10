@@ -9,6 +9,7 @@ import RolesList from "@/pages/RolesList";
 import CreateRole from "@/pages/CreateRole";
 import RoleDetail from "@/pages/RoleDetail";
 import CaseDetail from "@/pages/CaseDetail";
+import ReportView from "@/pages/ReportView";
 import TakeCase from "@/pages/TakeCase";
 import ProtectedRoute from "@/components/ProtectedRoute";
 
@@ -27,6 +28,7 @@ export default function App() {
             <Route path="/roles/new" element={<ProtectedRoute><CreateRole /></ProtectedRoute>} />
             <Route path="/roles/:roleId" element={<ProtectedRoute><RoleDetail /></ProtectedRoute>} />
             <Route path="/cases/:caseId" element={<ProtectedRoute><CaseDetail /></ProtectedRoute>} />
+            <Route path="/reports/:assignmentId" element={<ProtectedRoute><ReportView /></ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
           <Toaster position="top-right" richColors closeButton />

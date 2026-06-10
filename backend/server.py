@@ -15,6 +15,7 @@ from db import close_client, ensure_indexes  # noqa: E402
 from routes_assignments import router as assignments_router  # noqa: E402
 from routes_auth import router as auth_router  # noqa: E402
 from routes_cases import router as cases_router  # noqa: E402
+from routes_evaluation import router as evaluation_router  # noqa: E402
 from routes_responses import router as responses_router  # noqa: E402
 from routes_roles import router as roles_router  # noqa: E402
 from routes_take import router as take_router  # noqa: E402
@@ -64,6 +65,7 @@ api.include_router(roles_router)
 api.include_router(cases_router)
 api.include_router(assignments_router)
 api.include_router(responses_router)
+api.include_router(evaluation_router)
 api.include_router(take_router)
 
 app.include_router(api)

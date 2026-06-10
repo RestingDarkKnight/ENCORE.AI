@@ -1,0 +1,42 @@
+{
+  "summary": "ENCORE Phase 3 — Evaluation & Reporting fully validated. 18/18 new backend pytest tests pass (evaluations, decisions, leaderboard, audio JWT, auto-evaluate no-op). Frontend Playwright verified: report-view for Alice renders all testids (summary, strengths, concerns, dimensions x4 with weight/score-ring/anchor-bar/justification/blockquote, recommendation-pill='Hire', candidate-work, audio src contains ?t=<jwt>); decision flow (note + advance/hold/reject buttons POST /api/decisions + toast + visual selection + restore); not-evaluated state shows report-run-evaluation + not-evaluated-banner and run-evaluation POST returns 503 with 'Claude is not configured yet' toast; leaderboard-panel renders sorted (Alice 3.8 HIRE #1, Bob LB 2.5 BORDERLINE #2) with leaderboard-row testids; InvitePanel adds assignment-view-report-{id} link only on submitted; logout + protected route guard redirects /reports/{id} to /login.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/reports/{id} for IN-PROGRESS or SENT assignment", "issues": ["Spec says 'no run-evaluation button, no decision UI' but the page DOES still render the 'Evaluate with Claude' button (appears disabled visually) AND the full decision-section (note + advance/hold/reject). The not-submitted banner text is correctly shown ('The candidate hasn\u2019t submitted yet. The report unlocks after submission.') but it lacks a data-testid (no `not-evaluated-banner` or `report-not-submitted` testid on this branch). Cosmetic/UX-only \u2014 backend correctly returns 409 if Evaluate is clicked, and decision POST would still work but is logically premature."]},
+      {"screen": "/reports/{id} dimension cards (seed data)", "issues": ["Dimensions 2, 3, and 4 share identical justification text and identical blockquote in the seeded evaluation. The UI renders them faithfully, so this is a SEED-DATA quality issue (not a UI bug). The summary line says 'Scored by claude-opus-4-8 (seeded for UI)' which makes it intentional, but a more varied seed would test the UI more realistically."]},
+      {"screen": "/reports/{id} score rings", "issues": ["Console warning on first render: framer-motion animates strokeDashoffset from 'undefined' to a number on every score-ring on mount. Cosmetic React/framer-motion warning, ring still renders correctly. Same warning was flagged in iteration-2 for the progress ring \u2014 same fix would resolve both (initialize the motion value)."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_encore_phase3.py",
+    "/app/test_reports/pytest/encore_phase3.xml"
+  ],
+  "action_items": [
+    "(Optional) Hide or fully disable 'Evaluate with Claude' button and the decision-section on the /reports/{id} page when assignment.status !== 'submitted'. Currently both render even though the not-submitted banner is shown.",
+    "(Optional) Add a `data-testid=\"not-evaluated-banner\"` (or `report-not-submitted`) on the in-progress/sent banner so the state is queryable in tests. Currently only the submitted-no-eval state has `not-evaluated-banner`.",
+    "(Optional) Seed varied justification/quote per dimension on the Alice fixture so the report UI demos all 4 cards distinctly.",
+    "(Cosmetic) Initialize strokeDashoffset motion value to avoid 'undefined \u2192 number' framer-motion warnings on score rings."
+  ],
+  "critical_code_review_comments": [
+    "routes_evaluation.evaluate_assignment correctly enforces order: cross-manager 404 \u2192 not-submitted 409 \u2192 missing response 404 \u2192 idempotent return-existing \u2192 missing key 503. Verified all 5 branches.",
+    "POST /decisions performs a true upsert keyed by response_id (verified by toggling advance \u2192 reject \u2192 advance through the API and observing one row).",
+    "Leaderboard sort key (0 if score else 1, -score, status_rank) puts evaluated-first by score desc, then submitted-not-evaluated, then in_progress, then sent \u2014 verified by seeded second eval at 2.5 ranking below Alice's 3.8.",
+    "Audio JWT streaming: missing ?t \u2192 401, garbage ?t \u2192 401, valid ?t belonging to case manager \u2192 200 stream. <audio src> in ReportView correctly appends ?t=<jwt> so the browser native player authenticates without Authorization header.",
+    "_auto_evaluate background task on submit cleanly no-ops when ANTHROPIC_API_KEY is empty (logged 'Skipping auto-evaluation' in backend logs; verified via test_submit_does_not_create_evaluation_when_key_missing which POSTs a real submit and then asserts GET /evaluation \u2192 null).",
+    "Models: Evaluation has scores[].quote, recommendation enum, model_used; Decision has outcome enum (advance|reject|hold), note, decided_at. 422 returned on invalid outcome (verified).",
+    "Cross-manager isolation enforced on every Phase 3 endpoint: /evaluate, /evaluation, /decisions POST, /leaderboard, audio stream \u2014 all return 404 for non-owner (verified)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_encore_phase3.py (new)"
+  ],
+  "success_rate": {"backend": "100% (18/18 phase-3 + 18/18 phase-2 + 20/20 phase-1)", "frontend": "100% on report rendering + decision flow + leaderboard + InvitePanel view-report link + logout/guard. Minor design deviation noted on the in-progress state (decision UI not hidden) \u2014 not a functional bug."},
+  "test_credentials": "demo.manager@encore.ai / Encore-Phase1-2026!",
+  "seed_data_creation": "Tests insert (via pymongo): (1) TEST_P3_NoEvalCase + submitted assignment + response with NO evaluation to exercise 503; (2) a second Evaluation row at overall_score=2.5 on Alice's case to exercise leaderboard sort; (3) TEST_P3_AutoEvalNoOp end-to-end take/submit to verify auto-evaluate background task no-ops without ANTHROPIC_API_KEY. Mongo test data is prefixed TEST_ for easy cleanup.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Pre-seeded evaluation lives on assignment id e0f36f20-e3c2-42ad-9055-1522e57f2b3c (Alice, case 36aac6e1-8d86-4ca8-b755-d98f76a451ac, overall_score=3.8, recommendation='hire', decision='advance'). Phase 3 tests use the same pymongo-sync pattern as Phase 2 to avoid motor closed-loop issues. Frontend testids verified: report-view, report-summary, report-strengths, report-concerns, report-dimensions, dimension-{id}, recommendation-pill, report-candidate-work, decision-section, decision-note, decision-advance, decision-hold, decision-reject, report-run-evaluation, not-evaluated-banner, leaderboard-panel, leaderboard-row-{assignment_id}, assignment-view-report-{id}. NOTE: the 'candidate hasn\u2019t submitted' branch lacks a data-testid \u2014 query via text content (use unicode curly quote \u2019, not ASCII ').",
+  "rca of the issue": "No functional bugs. The only design deviation: ReportView.jsx renders decision-section and report-run-evaluation regardless of assignment status. Spec asks both to be hidden when status != submitted. Recommended fix: wrap both blocks in {assignment.status === 'submitted' && (...)} in ReportView.jsx (the page already shows a friendly banner for the not-submitted case, so removing the now-irrelevant action surfaces would tighten UX). No backend changes needed \u2014 the API already returns 409 on premature evaluate."
+}

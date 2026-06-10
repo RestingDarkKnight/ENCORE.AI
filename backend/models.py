@@ -250,19 +250,57 @@ class CriterionScore(BaseModel):
     name: str
     score: float
     weight: float
+    quote: str = Field(default="", description="Quote from the candidate's answer that justifies the score")
     justification: str
+
+
+Recommendation = Literal["strong_hire", "hire", "borderline", "no_hire"]
 
 
 class Evaluation(BaseModel):
     id: str = Field(default_factory=_new_id)
     response_id: str
+    assignment_id: str
+    case_id: str
     scores: List[CriterionScore]
     overall_score: float
+    recommendation: Recommendation
     strengths: List[str] = Field(default_factory=list)
     concerns: List[str] = Field(default_factory=list)
-    recommendation: str
     summary: str
+    model_used: Optional[str] = None
     created_at: str = Field(default_factory=_now_iso)
+
+
+class EvaluationDraft(BaseModel):
+    """The exact JSON shape we ask Claude to return for an evaluation."""
+    scores: List[CriterionScore]
+    overall_score: float = Field(ge=0, le=5)
+    recommendation: Recommendation
+    strengths: List[str]
+    concerns: List[str]
+    summary: str
+
+
+# ---------- Hiring decision ----------
+DecisionOutcome = Literal["advance", "reject", "hold"]
+
+
+class DecisionCreate(BaseModel):
+    response_id: str
+    outcome: DecisionOutcome
+    note: str = Field(default="", max_length=2000)
+
+
+class Decision(BaseModel):
+    id: str = Field(default_factory=_new_id)
+    response_id: str
+    assignment_id: str
+    case_id: str
+    manager_id: str
+    outcome: DecisionOutcome
+    note: str = ""
+    decided_at: str = Field(default_factory=_now_iso)
 
 
 def doc_strip(d: dict[str, Any]) -> dict[str, Any]:

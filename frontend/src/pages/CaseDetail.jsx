@@ -7,6 +7,7 @@ import {
 } from "@phosphor-icons/react";
 import { motion, AnimatePresence } from "framer-motion";
 import InvitePanel from "@/components/InvitePanel";
+import Leaderboard from "@/components/Leaderboard";
 
 /**
  * Inline editable text — single line (heading) or multi-line.
@@ -374,6 +375,9 @@ export default function CaseDetail() {
 
       {/* Invite candidates (Phase 2) */}
       <InvitePanel caseId={c.id} caseStatus={c.status} />
+
+      {/* Compare candidates (Phase 3) */}
+      <Leaderboard caseId={c.id} />
 
       {/* Rubric */}
       <section data-testid="case-rubric-section">
