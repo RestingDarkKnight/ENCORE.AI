@@ -1,13 +1,9 @@
-"""Pydantic models for ENCORE.
-
-All documents use UUID strings (no ObjectId).
-Datetimes are stored as ISO strings.
-"""
+"""Pydantic models for ENCORE."""
 from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from typing import Any, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -20,7 +16,7 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-# ---------- Auth / Manager (users with role=manager) ----------
+# ---------- Auth / Manager ----------
 class ManagerBase(BaseModel):
     model_config = ConfigDict(extra="ignore")
     email: EmailStr
@@ -92,17 +88,16 @@ class Role(RoleCreate):
 
 # ---------- Case Study ----------
 class RubricAnchors(BaseModel):
-    """Behavioral anchors at three reference scores."""
-    one: str = Field(description="What a score of 1 looks like (weak)")
-    three: str = Field(description="What a score of 3 looks like (solid)")
-    five: str = Field(description="What a score of 5 looks like (exceptional)")
+    one: str
+    three: str
+    five: str
 
 
 class RubricDimension(BaseModel):
     id: str = Field(default_factory=_new_id)
     name: str
     description: str
-    weight: float = Field(description="Weight as a percentage (0-100); all weights sum to ~100")
+    weight: float
     anchors: RubricAnchors
 
 
@@ -114,9 +109,8 @@ class CaseSection(BaseModel):
 
 
 class CaseStudyDraft(BaseModel):
-    """The exact JSON shape we ask Claude to return."""
     title: str
-    scenario_text: str = Field(description="Story-style intro: the realistic situation the candidate faces")
+    scenario_text: str
     sections: List[CaseSection]
     rubric: List[RubricDimension]
     estimated_minutes: int = 60
@@ -145,7 +139,6 @@ class CaseGenerateRequest(BaseModel):
 
 
 class CaseUpdateRequest(BaseModel):
-    """Patch any of these fields on an existing draft case."""
     title: Optional[str] = None
     scenario_text: Optional[str] = None
     sections: Optional[List[CaseSection]] = None
@@ -158,28 +151,100 @@ class SectionRegenerateRequest(BaseModel):
     notes: str = Field(default="", max_length=2000)
 
 
-# ---------- Phase 2/3 scaffolding (kept lean) ----------
-class Assignment(BaseModel):
-    id: str = Field(default_factory=_new_id)
+# ---------- Phase 2: Assignment / Response ----------
+AssignmentStatus = Literal["sent", "in_progress", "submitted"]
+
+
+class AssignmentCreate(BaseModel):
     case_id: str
     candidate_email: EmailStr
     candidate_name: Optional[str] = None
+    time_limit_minutes: int = Field(default=180, ge=15, le=480)
+
+
+class Assignment(BaseModel):
+    id: str = Field(default_factory=_new_id)
+    case_id: str
+    manager_id: str
+    candidate_email: EmailStr
+    candidate_name: Optional[str] = None
     token: str = Field(default_factory=lambda: uuid.uuid4().hex)
-    status: Literal["sent", "in_progress", "submitted"] = "sent"
+    status: AssignmentStatus = "sent"
+    time_limit_minutes: int = 180
     created_at: str = Field(default_factory=_now_iso)
+    started_at: Optional[str] = None
     submitted_at: Optional[str] = None
 
 
-class Response(BaseModel):
+class AudioRecord(BaseModel):
+    """One uploaded audio clip linked to a specific question."""
+    storage_path: str
+    content_type: str
+    size: int
+    uploaded_at: str = Field(default_factory=_now_iso)
+    transcript: Optional[str] = None
+    transcribed_at: Optional[str] = None
+
+
+class CandidateResponse(BaseModel):
+    """A candidate's work for an assignment. One per assignment.
+
+    `answers` is keyed by f"{section_id}::{q_idx}" → text.
+    `audio` is keyed by the same key → AudioRecord.
+    """
     id: str = Field(default_factory=_new_id)
     assignment_id: str
-    answers: dict = Field(default_factory=dict)
-    audio_urls: List[str] = Field(default_factory=list)
-    transcript: Optional[str] = None
+    answers: Dict[str, str] = Field(default_factory=dict)
+    audio: Dict[str, AudioRecord] = Field(default_factory=dict)
+    honor_code_accepted: bool = False
     time_taken_seconds: Optional[int] = None
     submitted_at: Optional[str] = None
+    updated_at: str = Field(default_factory=_now_iso)
 
 
+class ProgressSaveRequest(BaseModel):
+    answers: Dict[str, str] = Field(default_factory=dict)
+    honor_code_accepted: Optional[bool] = None
+
+
+class SubmitRequest(BaseModel):
+    answers: Dict[str, str] = Field(default_factory=dict)
+    honor_code_accepted: bool = True
+    time_taken_seconds: Optional[int] = None
+
+
+# ---------- Candidate-facing case (rubric stripped) ----------
+class CandidateSection(BaseModel):
+    id: str
+    title: str
+    intro: str
+    questions: List[str]
+
+
+class CandidateCaseView(BaseModel):
+    case_id: str
+    title: str
+    scenario_text: str
+    sections: List[CandidateSection]
+    estimated_minutes: int
+
+
+class TakeView(BaseModel):
+    """Everything the candidate's browser needs to take the case."""
+    assignment_id: str
+    status: AssignmentStatus
+    candidate_email: EmailStr
+    candidate_name: Optional[str]
+    time_limit_minutes: int
+    started_at: Optional[str]
+    submitted_at: Optional[str]
+    case: CandidateCaseView
+    saved_answers: Dict[str, str] = Field(default_factory=dict)
+    saved_audio: Dict[str, AudioRecord] = Field(default_factory=dict)
+    honor_code_accepted: bool = False
+
+
+# ---------- Phase 3 stubs ----------
 class CriterionScore(BaseModel):
     dimension_id: str
     name: str
@@ -201,6 +266,5 @@ class Evaluation(BaseModel):
 
 
 def doc_strip(d: dict[str, Any]) -> dict[str, Any]:
-    """Remove Mongo's _id from a fetched dict."""
     d.pop("_id", None)
     return d

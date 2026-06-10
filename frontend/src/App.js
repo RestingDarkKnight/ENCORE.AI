@@ -9,6 +9,7 @@ import RolesList from "@/pages/RolesList";
 import CreateRole from "@/pages/CreateRole";
 import RoleDetail from "@/pages/RoleDetail";
 import CaseDetail from "@/pages/CaseDetail";
+import TakeCase from "@/pages/TakeCase";
 import ProtectedRoute from "@/components/ProtectedRoute";
 
 export default function App() {
@@ -20,6 +21,7 @@ export default function App() {
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/take/:token" element={<TakeCase />} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/roles" element={<ProtectedRoute><RolesList /></ProtectedRoute>} />
             <Route path="/roles/new" element={<ProtectedRoute><CreateRole /></ProtectedRoute>} />

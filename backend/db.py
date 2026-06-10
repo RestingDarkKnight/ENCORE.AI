@@ -32,7 +32,8 @@ async def ensure_indexes() -> None:
     await db.cases.create_index([("role_id", 1), ("created_at", -1)])
     # Assignments - by case + by candidate token
     await db.assignments.create_index("case_id")
-    await db.assignments.create_index("invite_token", unique=True)
+    await db.assignments.create_index("manager_id")
+    await db.assignments.create_index("token", unique=True)
     # Responses - by assignment
     await db.responses.create_index("assignment_id", unique=True)
     # Evaluations - by response

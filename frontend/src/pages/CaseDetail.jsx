@@ -6,6 +6,7 @@ import {
   ArrowLeft, CheckCircle, Lock, PencilSimple, ArrowsClockwise, Sparkle, Warning, LockOpen, Clock,
 } from "@phosphor-icons/react";
 import { motion, AnimatePresence } from "framer-motion";
+import InvitePanel from "@/components/InvitePanel";
 
 /**
  * Inline editable text — single line (heading) or multi-line.
@@ -370,6 +371,9 @@ export default function CaseDetail() {
           ))}
         </div>
       </section>
+
+      {/* Invite candidates (Phase 2) */}
+      <InvitePanel caseId={c.id} caseStatus={c.status} />
 
       {/* Rubric */}
       <section data-testid="case-rubric-section">
