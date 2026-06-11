@@ -70,24 +70,13 @@ async def unarchive_role(role_id: str, manager: ManagerPublic = Depends(current_
 
 @router.delete("/{role_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_role(role_id: str, manager: ManagerPublic = Depends(current_manager)):
-    db = get_db()
-    role = await db.roles.find_one({"id": role_id, "manager_id": manager.id})
-    if not role:
+    """Soft-archive a role (recoverable). Underlying cases remain accessible under 'All cases'."""
+    res = await get_db().roles.update_one(
+        {"id": role_id, "manager_id": manager.id},
+        {"$set": {"archived": True}},
+    )
+    if res.matched_count == 0:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Role not found")
-    # Soft-delete policy: refuse hard delete if there is *any* candidate activity.
-    # Manager should archive instead — no data is destroyed.
-    case_ids = [c["id"] async for c in db.cases.find({"role_id": role_id}, {"id": 1})]
-    if case_ids:
-        has_assignments = await db.assignments.count_documents({"case_id": {"$in": case_ids}}) > 0
-        if has_assignments:
-            raise HTTPException(
-                status.HTTP_409_CONFLICT,
-                "This role has candidate assignments. Archive it instead — no data will be lost.",
-            )
-    # No assignments: cascade-delete the role's cases (drafts only) and the role itself.
-    if case_ids:
-        await db.cases.delete_many({"role_id": role_id})
-    await db.roles.delete_one({"id": role_id})
     return None
 
 
@@ -113,9 +102,3 @@ async def update_role(role_id: str, payload: RoleUpdate, manager: ManagerPublic 
     if res.matched_count == 0:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Role not found")
     return await get_role(role_id, manager)
-
-
-@router.delete("/{role_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_role_legacy_alias(role_id: str, manager: ManagerPublic = Depends(current_manager)):
-    """Deprecated duplicate kept for backwards compatibility — see delete_role above."""
-    raise HTTPException(status.HTTP_404_NOT_FOUND, "Use the canonical DELETE handler")

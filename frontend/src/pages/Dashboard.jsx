@@ -7,6 +7,7 @@ import {
   Plus, Briefcase, Sparkle, CheckCircle, ArrowRight, UsersThree, ChartBar, ScanSmiley,
 } from "@phosphor-icons/react";
 import BadgeStrip from "@/components/BadgeStrip";
+import PipelineStrip from "@/components/PipelineStrip";
 
 function MomentumCard({ label, value, target, icon: Icon, testid, accent = "brand" }) {
   const safeTarget = Math.max(1, target);
@@ -95,6 +96,9 @@ export default function Dashboard() {
           <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
         </Link>
       </header>
+
+      {/* Pipeline orientation strip — next best action */}
+      <PipelineStrip stats={stats} firstRoleId={roles[0]?.id} />
 
       {/* Momentum rings */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" data-testid="momentum-section">

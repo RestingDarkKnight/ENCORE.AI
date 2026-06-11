@@ -48,8 +48,8 @@ def _badge(id: str, label: str, description: str, earned: bool, earned_at: Optio
 async def manager_stats(manager: ManagerPublic = Depends(current_manager)):
     db = get_db()
 
-    roles = await db.roles.count_documents({"manager_id": manager.id})
-    cases = await db.cases.count_documents({"manager_id": manager.id})
+    roles = await db.roles.count_documents({"manager_id": manager.id, "archived": {"$ne": True}})
+    cases = await db.cases.count_documents({"manager_id": manager.id, "status": {"$ne": "archived"}})
     approved = await db.cases.count_documents({"manager_id": manager.id, "status": "approved"})
     invited = await db.assignments.count_documents({"manager_id": manager.id})
     submitted = await db.assignments.count_documents({"manager_id": manager.id, "status": "submitted"})

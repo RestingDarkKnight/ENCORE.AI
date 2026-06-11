@@ -4,10 +4,12 @@ import api from "@/lib/api";
 import { toast } from "sonner";
 import {
   ArrowLeft, CheckCircle, Lock, PencilSimple, ArrowsClockwise, Sparkle, Warning, LockOpen, Clock,
+  Archive, ArrowCounterClockwise,
 } from "@phosphor-icons/react";
 import { motion, AnimatePresence } from "framer-motion";
 import InvitePanel from "@/components/InvitePanel";
 import Leaderboard from "@/components/Leaderboard";
+import KebabMenu from "@/components/KebabMenu";
 
 /**
  * Inline editable text — single line (heading) or multi-line.
@@ -197,6 +199,27 @@ export default function CaseDetail() {
     }
   };
 
+  const onArchive = async () => {
+    if (!window.confirm(`Archive "${c.title}"? It will be hidden from the role's case list. Candidate data is preserved and you can restore it any time.`)) return;
+    try {
+      await api.post(`/cases/${caseId}/archive`);
+      toast.success("Case archived.");
+      navigate(`/roles/${c.role_id}`);
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Could not archive case.");
+    }
+  };
+
+  const onUnarchive = async () => {
+    try {
+      const { data } = await api.post(`/cases/${caseId}/unarchive`);
+      setCase(data);
+      toast.success("Case restored to draft.");
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Could not restore case.");
+    }
+  };
+
   if (loading) return <div className="text-center text-ink-soft py-16">Loading case…</div>;
   if (!c) return <div className="text-center text-ink-soft py-16">Case not found.</div>;
 
@@ -223,6 +246,10 @@ export default function CaseDetail() {
                 <LockOpen size={12} /> Reopen
               </button>
             </>
+          ) : c.status === "archived" ? (
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider border border-black/15 bg-black/[0.04] text-ink-soft rounded-full px-3 py-1.5" data-testid="case-archived-pill">
+              <Archive weight="fill" size={12} /> Archived
+            </span>
           ) : (
             <>
               <button
@@ -247,8 +274,33 @@ export default function CaseDetail() {
               </button>
             </>
           )}
+          <KebabMenu
+            testid="case-detail-kebab"
+            items={
+              c.status === "archived"
+                ? [{ label: "Restore case", icon: ArrowCounterClockwise, onClick: onUnarchive, testid: "case-detail-unarchive" }]
+                : [{ label: "Archive case", icon: Archive, onClick: onArchive, danger: true, testid: "case-detail-archive" }]
+            }
+          />
         </div>
       </div>
+
+      {c.status === "archived" && (
+        <div className="encore-card p-4 bg-black/[0.03] border-black/10 flex items-center justify-between gap-4 flex-wrap" data-testid="case-archived-banner">
+          <div className="flex items-center gap-3">
+            <Archive weight="duotone" size={20} className="text-ink-soft" />
+            <p className="text-sm text-ink-soft">This case is archived and won&rsquo;t appear in the role&rsquo;s active list. Candidate responses and reports are preserved.</p>
+          </div>
+          <button
+            type="button"
+            onClick={onUnarchive}
+            data-testid="case-archived-banner-restore"
+            className="inline-flex items-center gap-1.5 text-sm font-medium border border-black/15 hover:border-black/30 hover:bg-black/[0.02] rounded-lg px-3 py-1.5"
+          >
+            <ArrowCounterClockwise size={13} /> Restore to draft
+          </button>
+        </div>
+      )}
 
       <AnimatePresence>
         {justApproved && (

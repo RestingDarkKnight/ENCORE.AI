@@ -303,35 +303,19 @@ async def reopen_case(case_id: str, manager: ManagerPublic = Depends(current_man
 
 @router.delete("/{case_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_case(case_id: str, manager: ManagerPublic = Depends(current_manager)):
-    """Hard-delete a case. Refused if any candidate has SUBMITTED — archive instead."""
-    db = get_db()
-    existing = await db.cases.find_one({"id": case_id, "manager_id": manager.id})
-    if not existing:
+    """Soft-archive a case. Candidate data (assignments / responses / evaluations) is preserved."""
+    res = await get_db().cases.update_one(
+        {"id": case_id, "manager_id": manager.id},
+        {"$set": {"status": "archived", "updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    if res.matched_count == 0:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Case not found")
-
-    submitted_count = await db.assignments.count_documents({"case_id": case_id, "status": "submitted"})
-    if submitted_count > 0:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            "This case has submitted responses. Archive it instead — candidate data should not be destroyed.",
-        )
-
-    # Cascade: assignments + their responses + evaluations + decisions
-    assignment_ids = [a["id"] async for a in db.assignments.find({"case_id": case_id}, {"id": 1})]
-    if assignment_ids:
-        response_ids = [r["id"] async for r in db.responses.find({"assignment_id": {"$in": assignment_ids}}, {"id": 1})]
-        if response_ids:
-            await db.evaluations.delete_many({"response_id": {"$in": response_ids}})
-            await db.decisions.delete_many({"response_id": {"$in": response_ids}})
-            await db.responses.delete_many({"assignment_id": {"$in": assignment_ids}})
-        await db.assignments.delete_many({"case_id": case_id})
-
-    await db.cases.delete_one({"id": case_id})
     return None
 
 
 @router.post("/{case_id}/archive", response_model=Case)
 async def archive_case(case_id: str, manager: ManagerPublic = Depends(current_manager)):
+    """Explicit archive (idempotent). Same effect as DELETE — kept for clarity in the UI."""
     res = await get_db().cases.update_one(
         {"id": case_id, "manager_id": manager.id},
         {"$set": {"status": "archived", "updated_at": datetime.now(timezone.utc).isoformat()}},
@@ -340,10 +324,51 @@ async def archive_case(case_id: str, manager: ManagerPublic = Depends(current_ma
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Case not found")
     doc = await get_db().cases.find_one({"id": case_id})
     return Case(**doc_strip(doc))
+
+
+@router.post("/{case_id}/unarchive", response_model=Case)
+async def unarchive_case(case_id: str, manager: ManagerPublic = Depends(current_manager)):
+    """Restore an archived case back to draft (manager will re-approve if needed)."""
+    existing = await get_db().cases.find_one({"id": case_id, "manager_id": manager.id})
+    if not existing:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Case not found")
+    if existing.get("status") != "archived":
+        return Case(**doc_strip(existing))
+    await get_db().cases.update_one(
+        {"id": case_id},
+        {"$set": {"status": "draft", "updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    doc = await get_db().cases.find_one({"id": case_id})
+    return Case(**doc_strip(doc))
+
+
+@router.get("/role/{role_id}", response_model=List[Case])
+async def list_cases_by_role(
+    role_id: str,
+    manager: ManagerPublic = Depends(current_manager),
+    include_archived: bool = False,
+):
+    """All cases for a role, owned by the current manager. Archived hidden by default."""
     role = await get_db().roles.find_one({"id": role_id, "manager_id": manager.id})
     if not role:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Role not found")
-    cursor = get_db().cases.find({"role_id": role_id}).sort("created_at", -1)
+    q: dict = {"role_id": role_id, "manager_id": manager.id}
+    if not include_archived:
+        q["status"] = {"$ne": "archived"}
+    cursor = get_db().cases.find(q).sort("created_at", -1)
+    return [Case(**doc_strip(d)) async for d in cursor]
+
+
+@router.get("", response_model=List[Case])
+async def list_all_cases(
+    manager: ManagerPublic = Depends(current_manager),
+    include_archived: bool = False,
+):
+    """Manager-wide cases list (used by the 'All cases' surface). Archived hidden by default."""
+    q: dict = {"manager_id": manager.id}
+    if not include_archived:
+        q["status"] = {"$ne": "archived"}
+    cursor = get_db().cases.find(q).sort("created_at", -1)
     return [Case(**doc_strip(d)) async for d in cursor]
 
 

@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import api from "@/lib/api";
 import { toast } from "sonner";
-import { ArrowLeft, Sparkle, FileText, Warning, ArrowRight, CheckCircle, Clock } from "@phosphor-icons/react";
+import {
+  ArrowLeft, Sparkle, FileText, Warning, ArrowRight, CheckCircle, Clock,
+  Archive, ArrowCounterClockwise, PencilSimple,
+} from "@phosphor-icons/react";
+import KebabMenu from "@/components/KebabMenu";
 
 const DIFFICULTY_LABEL = {
   foundational: "Foundational",
@@ -13,6 +17,7 @@ const DIFFICULTY_LABEL = {
 
 export default function RoleDetail() {
   const { roleId } = useParams();
+  const navigate = useNavigate();
   const [role, setRole] = useState(null);
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,7 +29,7 @@ export default function RoleDetail() {
     try {
       const [r, c, h] = await Promise.all([
         api.get(`/roles/${roleId}`),
-        api.get(`/cases/role/${roleId}`),
+        api.get(`/cases/role/${roleId}`, { params: { include_archived: false } }),
         api.get("/health").catch(() => null),
       ]);
       setRole(r.data);
@@ -36,6 +41,37 @@ export default function RoleDetail() {
   }, [roleId]);
 
   useEffect(() => { load(); }, [load]);
+
+  const patchRole = async (updates) => {
+    try {
+      const { data } = await api.patch(`/roles/${roleId}`, updates);
+      setRole(data);
+      toast.success("Saved.");
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Could not save.");
+    }
+  };
+
+  const onArchive = async () => {
+    if (!window.confirm(`Archive "${role.job_title}"? It will be hidden from your dashboard. Cases stay accessible under All cases and can still be reviewed.`)) return;
+    try {
+      await api.post(`/roles/${roleId}/archive`);
+      toast.success("Role archived.");
+      navigate("/dashboard");
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Could not archive.");
+    }
+  };
+
+  const onUnarchive = async () => {
+    try {
+      const { data } = await api.post(`/roles/${roleId}/unarchive`);
+      setRole(data);
+      toast.success("Role restored.");
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Could not restore.");
+    }
+  };
 
   const generate = async () => {
     setGenerating(true);
@@ -56,27 +92,70 @@ export default function RoleDetail() {
 
   return (
     <div className="space-y-10" data-testid="role-detail-page">
-      <Link to="/dashboard" className="inline-flex items-center gap-1.5 text-sm text-ink-soft hover:text-ink" data-testid="role-detail-back">
-        <ArrowLeft size={14} /> Back to dashboard
-      </Link>
+      <div className="flex items-center justify-between gap-3">
+        <Link to="/dashboard" className="inline-flex items-center gap-1.5 text-sm text-ink-soft hover:text-ink" data-testid="role-detail-back">
+          <ArrowLeft size={14} /> Back to dashboard
+        </Link>
+        <KebabMenu
+          testid="role-detail-kebab"
+          items={
+            role.archived
+              ? [{ label: "Restore role", icon: ArrowCounterClockwise, onClick: onUnarchive, testid: "role-detail-unarchive" }]
+              : [{ label: "Archive role", icon: Archive, onClick: onArchive, danger: true, testid: "role-detail-archive" }]
+          }
+        />
+      </div>
+
+      {role.archived && (
+        <div className="encore-card p-4 bg-black/[0.03] border-black/10 flex items-center justify-between gap-4 flex-wrap" data-testid="role-archived-banner">
+          <div className="flex items-center gap-3">
+            <Archive weight="duotone" size={20} className="text-ink-soft" />
+            <p className="text-sm text-ink-soft">This role is archived. It&rsquo;s hidden from your dashboard but cases remain accessible.</p>
+          </div>
+          <button
+            type="button"
+            onClick={onUnarchive}
+            data-testid="role-archived-banner-restore"
+            className="inline-flex items-center gap-1.5 text-sm font-medium border border-black/15 hover:border-black/30 hover:bg-black/[0.02] rounded-lg px-3 py-1.5"
+          >
+            <ArrowCounterClockwise size={13} /> Restore
+          </button>
+        </div>
+      )}
 
       <header>
         <p className="encore-overline mb-2">{role.seniority} · {role.industry || "—"} · {DIFFICULTY_LABEL[role.difficulty_level]}</p>
-        <h1 className="font-display text-4xl sm:text-5xl font-black tracking-tighter leading-[1.05] mb-5">{role.job_title}</h1>
+        <EditableField
+          value={role.job_title}
+          onSave={(v) => patchRole({ job_title: v })}
+          testid="role-detail-job-title"
+          className="font-display text-4xl sm:text-5xl font-black tracking-tighter leading-[1.05] mb-5"
+          placeholder="Untitled role"
+        />
 
         <div className="grid md:grid-cols-2 gap-4 mt-6">
-          {role.success_criteria && (
-            <div className="encore-card p-5">
-              <p className="encore-overline mb-2">Success looks like</p>
-              <p className="text-sm text-ink">{role.success_criteria}</p>
-            </div>
-          )}
-          {role.common_challenges && (
-            <div className="encore-card p-5">
-              <p className="encore-overline mb-2">Common challenges</p>
-              <p className="text-sm text-ink">{role.common_challenges}</p>
-            </div>
-          )}
+          <div className="encore-card p-5">
+            <p className="encore-overline mb-2">Success looks like</p>
+            <EditableField
+              value={role.success_criteria}
+              onSave={(v) => patchRole({ success_criteria: v })}
+              testid="role-detail-success-criteria"
+              multiline
+              className="text-sm text-ink"
+              placeholder="Describe what success in this role looks like…"
+            />
+          </div>
+          <div className="encore-card p-5">
+            <p className="encore-overline mb-2">Common challenges</p>
+            <EditableField
+              value={role.common_challenges}
+              onSave={(v) => patchRole({ common_challenges: v })}
+              testid="role-detail-common-challenges"
+              multiline
+              className="text-sm text-ink"
+              placeholder="What does this role typically struggle with?"
+            />
+          </div>
         </div>
 
         {(role.technical_skills?.length > 0 || role.soft_skills?.length > 0) && (
@@ -139,12 +218,12 @@ export default function RoleDetail() {
         <button
           type="button"
           onClick={generate}
-          disabled={generating || !claudeOk}
+          disabled={generating || !claudeOk || role.archived}
           data-testid="case-generate-button"
           className="mt-4 inline-flex items-center gap-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-white rounded-lg px-5 py-2.5 transition-all hover:-translate-y-0.5"
         >
           <Sparkle size={16} weight="bold" />
-          <span className="font-medium text-sm">{generating ? "Drafting with Claude…" : "Generate case study"}</span>
+          <span className="font-medium text-sm">{generating ? "Drafting with Claude…" : role.archived ? "Restore role to generate" : "Generate case study"}</span>
         </button>
       </section>
 
@@ -200,5 +279,68 @@ function StatusPill({ status }) {
       {Icon && <Icon weight="fill" size={10} />}
       {cfg.label}
     </span>
+  );
+}
+
+// EditableField — click-to-edit inline text used for role title and free-text fields.
+// Single-line: commits on Enter or blur. Multiline: commits on blur or Cmd/Ctrl+Enter.
+function EditableField({ value, onSave, multiline = false, className = "", placeholder = "", testid }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value || "");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => { setDraft(value || ""); }, [value]);
+
+  const commit = async () => {
+    if (draft === (value || "")) { setEditing(false); return; }
+    setSaving(true);
+    try { await onSave(draft); } finally { setSaving(false); setEditing(false); }
+  };
+
+  if (editing) {
+    const common = {
+      autoFocus: true,
+      value: draft,
+      onChange: (e) => setDraft(e.target.value),
+      onBlur: commit,
+      "data-testid": testid,
+      className: `w-full bg-canvas border border-brand/40 rounded-lg px-3 py-2 focus:ring-2 focus:ring-brand/20 outline-none ${className}`,
+      disabled: saving,
+    };
+    if (multiline) {
+      return (
+        <textarea
+          {...common}
+          rows={Math.max(3, (draft || "").split("\n").length)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") { setDraft(value || ""); setEditing(false); }
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) commit();
+          }}
+        />
+      );
+    }
+    return (
+      <input
+        {...common}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") { setDraft(value || ""); setEditing(false); }
+          if (e.key === "Enter") commit();
+        }}
+      />
+    );
+  }
+
+  const isEmpty = !value || value.length === 0;
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      data-testid={testid ? `${testid}-trigger` : undefined}
+      title="Click to edit"
+      className={`group/edit text-left w-full hover:bg-black/[0.02] -mx-2 px-2 py-1 rounded-md transition-colors ${className}`}
+    >
+      {isEmpty ? <span className="text-ink-soft italic">{placeholder}</span> : <span className="whitespace-pre-wrap">{value}</span>}
+      <PencilSimple size={12} className="inline-block ml-2 opacity-0 group-hover/edit:opacity-50 transition-opacity align-middle" />
+    </button>
   );
 }
