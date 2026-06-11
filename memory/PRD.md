@@ -86,6 +86,15 @@ A hiring manager describes a role; ENCORE uses Claude to generate a tailored cas
 - `GET /api/stats/manager` returns counts + computed badge milestones (no new DB collection).
 - 10/10 new backend pytest + prior 74/74 still green (84 total). Frontend 100% on Landing surfaces, momentum dashboard, badges, candidate-activity panel, mobile TakeCase. Zero console warnings.
 
+### Phase A — Control & Clarity Fix Pack ✅ (2026-06-11)
+- **Role edit**: `PATCH /api/roles/{id}` already existed; UI now exposes click-to-edit on `job_title`, `success_criteria`, `common_challenges` (RoleDetail). Toast `Saved.` on commit.
+- **Role archive (soft)**: `archived: bool` flag on roles. `POST /api/roles/{id}/archive` and `/unarchive`. `DELETE /api/roles/{id}` is now a soft-archive (204; doc retained, `archived=true`). `GET /api/roles` filters archived by default; `?include_archived=true` returns all. RolesList shows kebab + "Show archived" toggle. Cards opacity-dim when archived. RoleDetail shows banner + Restore + disables case generation.
+- **Case archive (soft)**: `POST /api/cases/{id}/archive` and `/unarchive` (unarchive returns case to draft). `DELETE /api/cases/{id}` is now a soft-archive (no data destroyed). `GET /api/cases/role/{role_id}` filters archived by default. `GET /api/cases` (new) returns all cases for the manager, filterable. CaseDetail header has a kebab with Archive / Restore; archived URL shows banner + pill + Restore.
+- **Stats reflect archive**: `/api/stats/manager` `roles` and `cases` counts now exclude archived items (so dashboard momentum stays accurate). Other fields unchanged.
+- **PipelineStrip** (Dashboard): 4-stage orientation strip — Define role → Generate case → Invite candidates → Review reports. Computes the next best action from stats and renders a single CTA. Active stage pulses (motion respects `prefers-reduced-motion`). Gated on stats !== null to avoid initial flash.
+- **Shared `KebabMenu`** component (closes on outside-click / Escape) used by RolesList, RoleDetail, CaseDetail.
+- 7/7 new backend pytest (`tests/test_encore_phase_a.py`) + prior 72/73 still green (1 pre-existing flaky JWT audio test unrelated to Phase A). Frontend e2e: 100% on pipeline strip, kebab archive/restore, inline role edits, banner restore, archived disable rules.
+
 ## Backlog
 ### P0 — needed before Phase 2 sign-off by user
 - (None — Phase 1 acceptance is: signup → wizard → generate → edit → approve. All in place.)

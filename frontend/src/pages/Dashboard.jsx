@@ -97,8 +97,8 @@ export default function Dashboard() {
         </Link>
       </header>
 
-      {/* Pipeline orientation strip — next best action */}
-      <PipelineStrip stats={stats} firstRoleId={roles[0]?.id} />
+      {/* Pipeline orientation strip — next best action (gated on stats load to avoid flash) */}
+      {stats && <PipelineStrip stats={stats} firstRoleId={roles[0]?.id} />}
 
       {/* Momentum rings */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" data-testid="momentum-section">
