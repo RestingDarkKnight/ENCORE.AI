@@ -1,6 +1,7 @@
 // PipelineStrip.jsx — 4-stage orientation strip on the Dashboard.
 // Stages: Define role → Generate case → Invite candidates → Review reports.
-// Computes the next best action from manager stats and renders a single CTA.
+// A connector line draws left→right across the row on mount (sm+ screens).
+// Active stage pulses. Computes the next best action from manager stats.
 // Animations honour prefers-reduced-motion.
 
 import { Link } from "react-router-dom";
@@ -61,7 +62,6 @@ const STAGES = [
 export default function PipelineStrip({ stats, firstRoleId }) {
   const reduceMotion = useReducedMotion();
 
-  // Find the first incomplete stage = "next best action"
   const nextIdx = STAGES.findIndex((st) => !st.isDone(stats));
   const allDone = nextIdx === -1;
   const activeStage = allDone ? null : STAGES[nextIdx];
@@ -71,85 +71,98 @@ export default function PipelineStrip({ stats, firstRoleId }) {
       ? activeStage.cta(stats, firstRoleId)
       : activeStage.cta);
 
+  // Connector line — fills up to the latest completed (or active) stage
+  const fillUpTo = allDone ? STAGES.length - 1 : Math.max(0, nextIdx);
+  const fillPct = ((fillUpTo) / (STAGES.length - 1)) * 100;
+
   return (
-    <section data-testid="pipeline-strip" className="encore-card p-6 sm:p-7">
-      <div className="flex items-start justify-between gap-6 flex-wrap mb-6">
+    <section data-testid="pipeline-strip" className="encore-card p-7 sm:p-8">
+      <div className="flex items-start justify-between gap-6 flex-wrap mb-7">
         <div className="min-w-0">
           <p className="encore-overline mb-1.5">Your pipeline</p>
-          <h2 className="font-display text-xl sm:text-2xl font-bold tracking-tight">
+          <h2 className="font-display text-display-3 font-bold">
             {allDone ? "Pipeline is humming." : "Next: " + activeStage.label.toLowerCase()}
           </h2>
-          <p className="text-sm text-ink-soft mt-1.5 max-w-md">
+          <p className="text-sm text-ink-soft mt-1.5 max-w-md leading-relaxed">
             {allDone
               ? "You\u2019ve shipped the full loop end-to-end. Keep iterating, calibrating, and inviting."
               : activeStage.desc}
           </p>
         </div>
         {!allDone && cta && (
-          <Link
-            to={cta.to}
-            data-testid="pipeline-next-cta"
-            className="group inline-flex items-center gap-2 bg-brand hover:bg-brand-hover text-white rounded-lg px-4 py-2.5 transition-all hover:-translate-y-0.5 shadow-sm whitespace-nowrap"
-          >
-            <span className="font-medium text-sm">{cta.label}</span>
+          <Link to={cta.to} data-testid="pipeline-next-cta" className="btn-primary group whitespace-nowrap">
+            <span>{cta.label}</span>
             <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
           </Link>
         )}
       </div>
 
-      <ol className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3" data-testid="pipeline-stages">
-        {STAGES.map((st, i) => {
-          const done = st.isDone(stats);
-          const active = i === nextIdx;
-          const Icon = st.icon;
-          return (
-            <motion.li
-              key={st.id}
-              data-testid={`pipeline-stage-${st.id}`}
-              data-stage-state={done ? "done" : active ? "active" : "pending"}
-              initial={reduceMotion ? false : { opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, delay: i * 0.05, ease: [0.22, 1, 0.36, 1] }}
-              className={`relative flex items-start gap-3 rounded-lg border p-4 ${
-                done
-                  ? "border-brand-moss/25 bg-brand-moss/[0.04]"
-                  : active
-                  ? "border-brand/40 bg-brand/[0.04]"
-                  : "border-black/10 bg-canvas/40"
-              }`}
-            >
-              <div
-                className={`h-9 w-9 rounded-md flex items-center justify-center shrink-0 ${
+      <div className="relative">
+        {/* Connector track (visible from sm+ where stages are in a row) */}
+        <div className="hidden sm:block absolute left-[5%] right-[5%] top-9 h-px bg-black/10" aria-hidden />
+        <motion.div
+          className="hidden sm:block absolute left-[5%] top-9 h-px bg-brand-moss origin-left"
+          aria-hidden
+          initial={reduceMotion ? false : { scaleX: 0 }}
+          animate={{ scaleX: fillPct / 100 }}
+          style={{ width: "90%" }}
+          transition={{ duration: 0.9, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+        />
+
+        <ol className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 relative" data-testid="pipeline-stages">
+          {STAGES.map((st, i) => {
+            const done = st.isDone(stats);
+            const active = i === nextIdx;
+            const Icon = st.icon;
+            return (
+              <motion.li
+                key={st.id}
+                data-testid={`pipeline-stage-${st.id}`}
+                data-stage-state={done ? "done" : active ? "active" : "pending"}
+                initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35, delay: i * 0.08, ease: [0.22, 1, 0.36, 1] }}
+                className={`relative flex items-start gap-3 rounded-xl border p-4 bg-white/70 backdrop-blur-sm ${
                   done
-                    ? "bg-brand-moss/15 text-brand-moss"
+                    ? "border-brand-moss/25"
                     : active
-                    ? "bg-brand/10 text-brand"
-                    : "bg-black/[0.04] text-ink-soft"
+                    ? "border-brand/40 shadow-sm"
+                    : "border-black/10"
                 }`}
               >
-                {done ? <CheckCircle weight="fill" size={18} /> : <Icon weight="duotone" size={18} />}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="encore-overline mb-0.5">Step {i + 1}</p>
-                <p
-                  className={`text-sm font-semibold tracking-tight leading-snug ${
-                    done ? "text-brand-moss" : active ? "text-ink" : "text-ink-soft"
+                <div
+                  className={`h-9 w-9 rounded-md flex items-center justify-center shrink-0 ${
+                    done
+                      ? "bg-brand-moss/15 text-brand-moss"
+                      : active
+                      ? "bg-brand/10 text-brand"
+                      : "bg-black/[0.04] text-ink-soft"
                   }`}
                 >
-                  {st.label}
-                </p>
-              </div>
-              {active && !reduceMotion && (
-                <motion.span
-                  className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-brand"
-                  animate={{ scale: [1, 1.35, 1], opacity: [1, 0.6, 1] }}
-                  transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-                />
-              )}
-            </motion.li>
-          );
-        })}
-      </ol>
+                  {done ? <CheckCircle weight="fill" size={18} /> : <Icon weight="duotone" size={18} />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="encore-overline mb-0.5">Step {i + 1}</p>
+                  <p
+                    className={`text-sm font-semibold tracking-tight leading-snug ${
+                      done ? "text-brand-moss" : active ? "text-ink" : "text-ink-soft"
+                    }`}
+                  >
+                    {st.label}
+                  </p>
+                </div>
+                {active && !reduceMotion && (
+                  <motion.span
+                    className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-brand"
+                    animate={{ scale: [1, 1.35, 1], opacity: [1, 0.6, 1] }}
+                    transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                  />
+                )}
+              </motion.li>
+            );
+          })}
+        </ol>
+      </div>
     </section>
   );
 }

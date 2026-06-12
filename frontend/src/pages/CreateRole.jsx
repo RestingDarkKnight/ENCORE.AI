@@ -359,16 +359,33 @@ function ChipStep({ label, placeholder, items, input, setInput, onAdd, onRemove,
         </button>
       </div>
       {items.length > 0 && (
-        <div className="flex flex-wrap gap-2 mt-3" data-testid={`${testidPrefix}-list`}>
-          {items.map((s) => (
-            <span key={s} className="inline-flex items-center gap-1.5 bg-brand/5 text-brand rounded-full px-3 py-1 text-xs font-medium">
-              {s}
-              <button onClick={() => onRemove(s)} aria-label={`remove ${s}`} className="hover:text-brand-hover">
-                <X size={12} />
-              </button>
-            </span>
-          ))}
-        </div>
+        <motion.div
+          className="flex flex-wrap gap-2 mt-3"
+          data-testid={`${testidPrefix}-list`}
+          initial="hidden"
+          animate="show"
+          variants={{ hidden: {}, show: { transition: { staggerChildren: 0.04 } } }}
+        >
+          <AnimatePresence initial={false}>
+            {items.map((s) => (
+              <motion.span
+                key={s}
+                layout
+                initial={{ opacity: 0, scale: 0.85, y: 4 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.85, y: -4 }}
+                transition={{ type: "spring", stiffness: 380, damping: 26 }}
+                variants={{ hidden: { opacity: 0, scale: 0.85 }, show: { opacity: 1, scale: 1 } }}
+                className="inline-flex items-center gap-1.5 bg-brand/5 text-brand rounded-full px-3 py-1 text-xs font-medium"
+              >
+                {s}
+                <button onClick={() => onRemove(s)} aria-label={`remove ${s}`} className="hover:text-brand-hover">
+                  <X size={12} />
+                </button>
+              </motion.span>
+            ))}
+          </AnimatePresence>
+        </motion.div>
       )}
       {suggestions?.length > 0 && (
         <div className="mt-4">

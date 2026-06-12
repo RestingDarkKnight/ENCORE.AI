@@ -457,14 +457,28 @@ function DoneScreen({ view }) {
       data-testid="take-done"
     >
       <motion.div
-        initial={{ scale: 0.5, opacity: 0 }}
+        initial={{ scale: 0.7, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 0.15, type: "spring", stiffness: 240, damping: 18 }}
-        className="mx-auto h-20 w-20 rounded-full bg-brand-moss/10 text-brand-moss flex items-center justify-center mb-6"
+        transition={{ delay: 0.05, type: "spring", stiffness: 220, damping: 18 }}
+        className="mx-auto h-24 w-24 rounded-full bg-brand-moss/10 flex items-center justify-center mb-7"
       >
-        <CheckCircle weight="duotone" size={44} />
+        <svg viewBox="0 0 52 52" className="h-14 w-14">
+          <motion.circle
+            cx="26" cy="26" r="22" fill="none" stroke="#4A6B53" strokeWidth="2.5"
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 1 }}
+            transition={{ duration: 0.7, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+          />
+          <motion.path
+            d="M16 27 L23 34 L37 19"
+            fill="none" stroke="#4A6B53" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"
+            initial={{ pathLength: 0 }}
+            animate={{ pathLength: 1 }}
+            transition={{ duration: 0.55, delay: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          />
+        </svg>
       </motion.div>
-      <h1 className="font-display text-4xl font-black tracking-tighter leading-[1.05] mb-3">You&rsquo;re done — nicely handled.</h1>
+      <h1 className="font-display text-4xl font-black tracking-tighter leading-[1.05] mb-3">You&rsquo;re done &mdash; nicely handled.</h1>
       <p className="text-ink-soft">Thanks{view.candidate_name ? `, ${view.candidate_name}` : ""}. Your work was submitted and is now with the hiring team.</p>
       <p className="text-xs text-ink-soft mt-6 opacity-70">You can close this tab.</p>
     </motion.div>

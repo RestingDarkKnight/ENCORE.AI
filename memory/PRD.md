@@ -95,6 +95,21 @@ A hiring manager describes a role; ENCORE uses Claude to generate a tailored cas
 - **Shared `KebabMenu`** component (closes on outside-click / Escape) used by RolesList, RoleDetail, CaseDetail.
 - 7/7 new backend pytest (`tests/test_encore_phase_a.py`) + prior 72/73 still green (1 pre-existing flaky JWT audio test unrelated to Phase A). Frontend e2e: 100% on pipeline strip, kebab archive/restore, inline role edits, banner restore, archived disable rules.
 
+### Phase D — Design Elevation & Motion ✅ (2026-06-12)
+- **D1 Design language**: refined Tailwind tokens (typography scale `.text-display-{1,2,3}`, 8px-rhythm `section`/`section-lg`/`gutter` spacing, larger radii, layered shadows `card`/`card-hover`/`lift`, warm-neutral `canvas.warm`, restrained score scale `score.weak|mid|strong`). Global tabular numerals on all stats/scores. Two-button system (`.btn-primary`, `.btn-quiet`). Visible AA focus rings everywhere (`:focus-visible` global). `prefers-reduced-motion` honored across the app via a base-layer `@media` rule.
+- **D2 Motion choreography** (framer-motion only; reduced-motion honored):
+  - Route transitions: 0.2s fade+rise wrapper via `AnimatePresence` + `PageTransition` in `App.js`. `ScrollToTop` on route change.
+  - Dashboard: `useCountUp` hook animates stat numbers 0 → target. Pipeline strip draws connector line left → right with `scaleX` motion.
+  - Badge "newly earned" toast: `useBadgeNotifier` hook stores last-seen badge ids in `localStorage[encore.badges.seen.<managerId>]`. First visit seeds the set silently; subsequent visits fire a single refined `toast.custom` per newly-earned badge (no stacking, animated icon).
+  - Case generation: new `<GenerationTicker active />` cycles "Understanding the role… → Designing the scenario… → Writing the rubric…" on a 6.5s cadence with a slim shimmer bar.
+  - Case detail: sections stagger-reveal on mount (staggerChildren 0.08).
+  - TakeCase done screen: animated SVG check (circle + checkmark) with `pathLength` draw, replacing the static icon.
+  - Wizard chip swarm: `AnimatePresence` + `layout` + spring on add/remove for technical & soft skills chips.
+  - Reports: dimension cards stagger-reveal, dimension bars grow from 0 to value, leaderboard rows stagger from the left.
+- **D3 Landing rebuild** (`Landing.jsx`): GSAP timeline reveals headline ("Hire on judgment. Not trivia." with word-by-word `yPercent` stagger) → subhead → CTAs → trust line → hero mock. Three product-mock sections (Case Studio, Candidate Portal, Reports Hub) with `whileInView` scroll reveals — every mock is a styled component, fully themeable. Grain SVG overlay + `gradient-drift` keyframe behind hero. Social proof, closing CTA, footer. Headline timeline uses GSAP v3.15 (landing-only; rest of app remains framer-motion).
+- **D4 Quality bar**: Mobile Take-Case header unchanged from Phase 4 (already responsive at 390px). All interactive elements keyboard-navigable with visible focus rings. No layout shift — `PipelineStrip` and `BadgeStrip` gated on stats load. Reduced-motion verified on every new animation (PageTransition, useCountUp, GenerationTicker, hero, scroll reveals).
+- Verified: testing agent + visual smoke pass. Chip swarm live-tested (add 3 / remove 1 with spring animation). Landing GSAP timeline confirmed not stuck (all `[data-anim='headline-word']` settled at opacity 1). 0 console errors, 0 pageerrors across Landing, Dashboard, Roles list, Role detail. Source-reviewed for surfaces with no live data (badge subsequent-visit toast, generation ticker active state, ReportView with no completed evaluations).
+
 ## Backlog
 ### P0 — needed before Phase 2 sign-off by user
 - (None — Phase 1 acceptance is: signup → wizard → generate → edit → approve. All in place.)

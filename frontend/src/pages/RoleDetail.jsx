@@ -7,6 +7,7 @@ import {
   Archive, ArrowCounterClockwise, PencilSimple,
 } from "@phosphor-icons/react";
 import KebabMenu from "@/components/KebabMenu";
+import GenerationTicker from "@/components/GenerationTicker";
 
 const DIFFICULTY_LABEL = {
   foundational: "Foundational",
@@ -190,11 +191,13 @@ export default function RoleDetail() {
             <h2 className="font-display text-xl font-bold tracking-tight">Generate case study with Claude</h2>
             <p className="text-sm text-ink-soft mt-1">
               {generating
-                ? "ENCORE is designing your case — choosing stakeholders, picking real constraints, drafting a rubric…"
-                : "Claude drafts a sectioned work-simulation case with a weighted rubric. ~30–60 seconds."}
+                ? "Hang tight — the heavy lifting is happening server-side."
+                : "Claude drafts a sectioned work-simulation case with a weighted rubric. ~30\u201360 seconds."}
             </p>
           </div>
         </div>
+
+        <GenerationTicker active={generating} />
 
         {!claudeOk && (
           <div className="flex items-start gap-3 bg-signal-warning/5 border border-signal-warning/20 rounded-lg p-4 mb-5" data-testid="claude-not-configured-warning">

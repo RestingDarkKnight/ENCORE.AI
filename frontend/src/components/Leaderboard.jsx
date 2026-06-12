@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import api from "@/lib/api";
 import { Trophy, ArrowRight, CheckCircle } from "@phosphor-icons/react";
 
@@ -41,40 +42,50 @@ export default function Leaderboard({ caseId }) {
         <span className="text-xs text-ink-soft">Ranked by overall score</span>
       </div>
 
-      <div className="space-y-2">
+      <motion.div
+        className="space-y-2"
+        initial="hidden"
+        animate="show"
+        variants={{ hidden: {}, show: { transition: { staggerChildren: 0.06, delayChildren: 0.05 } } }}
+      >
         {data.rows.filter((r) => r.overall_score != null).map((row, i) => {
           const recCls = REC_PILL[row.recommendation] || "bg-canvas border-black/10 text-ink-soft";
           const dec = DEC_BADGE[row.decision];
           return (
-            <Link
+            <motion.div
               key={row.assignment.id}
-              to={`/reports/${row.assignment.id}`}
-              data-testid={`leaderboard-row-${row.assignment.id}`}
-              className="flex items-center gap-4 p-4 rounded-lg border border-black/[0.06] hover:bg-black/[0.02] hover:border-black/[0.12] transition-all group"
+              variants={{ hidden: { opacity: 0, x: -8 }, show: { opacity: 1, x: 0 } }}
+              transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
             >
-              <div className="font-display text-lg font-black text-ink-soft tabular-nums w-8">#{i + 1}</div>
-              <div className="font-display text-2xl font-black tracking-tighter text-brand tabular-nums w-14">
-                {row.overall_score.toFixed(1)}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-ink truncate">{row.assignment.candidate_name || row.assignment.candidate_email}</p>
-                <p className="text-xs text-ink-soft truncate">{row.summary || row.assignment.candidate_email}</p>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                {dec && (
-                  <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider border rounded-full px-2 py-0.5 ${dec.cls}`}>
-                    <CheckCircle weight="fill" size={10} /> {dec.label}
+              <Link
+                to={`/reports/${row.assignment.id}`}
+                data-testid={`leaderboard-row-${row.assignment.id}`}
+                className="flex items-center gap-4 p-4 rounded-lg border border-black/[0.06] hover:bg-black/[0.02] hover:border-black/[0.12] transition-all group"
+              >
+                <div className="font-display text-lg font-black text-ink-soft tabular-nums w-8">#{i + 1}</div>
+                <div className="font-display text-2xl font-black tracking-tighter text-brand tabular-nums w-14">
+                  {row.overall_score.toFixed(1)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-ink truncate">{row.assignment.candidate_name || row.assignment.candidate_email}</p>
+                  <p className="text-xs text-ink-soft truncate">{row.summary || row.assignment.candidate_email}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {dec && (
+                    <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider border rounded-full px-2 py-0.5 ${dec.cls}`}>
+                      <CheckCircle weight="fill" size={10} /> {dec.label}
+                    </span>
+                  )}
+                  <span className={`inline-flex items-center text-[10px] font-bold uppercase tracking-wider border rounded-full px-2.5 py-1 ${recCls}`}>
+                    {REC_LABEL[row.recommendation]}
                   </span>
-                )}
-                <span className={`inline-flex items-center text-[10px] font-bold uppercase tracking-wider border rounded-full px-2.5 py-1 ${recCls}`}>
-                  {REC_LABEL[row.recommendation]}
-                </span>
-                <ArrowRight size={14} className="text-ink-soft transition-transform group-hover:translate-x-1" />
-              </div>
-            </Link>
+                  <ArrowRight size={14} className="text-ink-soft transition-transform group-hover:translate-x-1" />
+                </div>
+              </Link>
+            </motion.div>
           );
         })}
-      </div>
+      </motion.div>
     </section>
   );
 }

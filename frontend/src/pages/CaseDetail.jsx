@@ -360,9 +360,20 @@ export default function CaseDetail() {
           <h2 className="font-display text-2xl font-bold tracking-tight">Sections</h2>
           <p className="text-xs text-ink-soft">Click any text to edit.</p>
         </div>
-        <div className="space-y-5">
+        <motion.div
+          className="space-y-5"
+          initial="hidden"
+          animate="show"
+          variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } } }}
+        >
           {c.sections.map((s, idx) => (
-            <div key={s.id} className="encore-card p-7" data-testid={`section-${s.id}`}>
+            <motion.div
+              key={s.id}
+              variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}
+              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+              className="encore-card p-7"
+              data-testid={`section-${s.id}`}
+            >
               <div className="flex items-start justify-between gap-3 mb-2">
                 <div className="flex-1">
                   <p className="encore-overline mb-2">Section {idx + 1}</p>
@@ -420,9 +431,9 @@ export default function CaseDetail() {
                   </li>
                 ))}
               </ol>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </section>
 
       {/* Invite candidates (Phase 2) */}

@@ -1,4 +1,4 @@
-@import url("https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@500,700,900&f[]=satoshi@400,500,700&display=swap");
+@import url("https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@500,700,900&f[]=satoshi@400,500,700&f[]=fraunces@600,700,900&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap");
 
 @tailwind base;
@@ -26,34 +26,66 @@
     --border: 218 43% 7% / 0.08;
     --input: 218 43% 7% / 0.12;
     --ring: 195 35% 15%;
-    --radius: 0.625rem;
+    --radius: 0.75rem;               /* slightly larger default radius */
   }
 }
 
 @layer base {
   * { @apply border-border; }
   html, body, #root { height: 100%; }
+  html { scroll-behavior: smooth; }
   body {
     @apply bg-canvas text-ink antialiased;
     font-family: "Satoshi", ui-sans-serif, system-ui, sans-serif;
     font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   h1, h2, h3, h4 {
     font-family: "Cabinet Grotesk", ui-sans-serif, system-ui, sans-serif;
     letter-spacing: -0.02em;
   }
+  /* All numbers tabular by default — scores, stats, counters */
+  .tabular, .tabular-nums {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+  }
   ::selection {
     background: #1A2E35;
     color: #FFFFFF;
   }
+  /* Visible AA focus rings everywhere */
+  :focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px #F7F8F6, 0 0 0 4px rgba(26,46,53,0.45);
+    border-radius: 6px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
 
 @layer components {
+  /* Premium card baseline — larger radius, layered shadow, smooth hover */
   .encore-card {
-    @apply rounded-xl border border-black/[0.06] bg-white shadow-[0_1px_2px_rgba(10,15,26,0.04)];
+    @apply rounded-xl border border-black/[0.06] bg-white shadow-card transition-shadow duration-300;
+  }
+  .encore-card-hover {
+    @apply hover:shadow-card-hover;
+  }
+  .encore-card-lift {
+    @apply rounded-2xl border border-black/[0.06] bg-white shadow-lift;
   }
   .encore-overline {
     @apply text-[11px] font-bold uppercase tracking-[0.22em] text-ink-soft;
+  }
+  .encore-overline-sand {
+    @apply text-[11px] font-bold uppercase tracking-[0.22em] text-brand-sand;
   }
   .encore-glass-header {
     @apply sticky top-0 z-50 backdrop-blur-xl bg-white/70 border-b border-black/[0.05];
@@ -69,6 +101,56 @@
     transform: translateX(-100%);
     background: linear-gradient(90deg, transparent, rgba(162, 144, 97, 0.18), transparent);
     animation: shimmer 1.8s infinite;
+  }
+  /* Two-button system — primary + quiet */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover text-white rounded-lg px-5 py-2.5 text-sm font-medium transition-all hover:-translate-y-0.5 active:translate-y-0 shadow-sm disabled:opacity-50 disabled:hover:translate-y-0;
+  }
+  .btn-quiet {
+    @apply inline-flex items-center justify-center gap-2 border border-black/15 hover:border-black/30 hover:bg-black/[0.02] text-ink rounded-lg px-4 py-2 text-sm font-medium transition-all;
+  }
+  /* Section dressing — warm-neutral background tint */
+  .section-warm {
+    background: linear-gradient(180deg, #F7F8F6 0%, #F2EFE8 100%);
+  }
+  /* Grain overlay used on Landing hero — tasteful, low opacity */
+  .grain {
+    position: relative;
+    isolation: isolate;
+  }
+  .grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.35;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.06 0 0 0 0 0.07 0 0 0 0 0.10 0 0 0 0.22 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  /* Slow gradient drift behind hero */
+  .gradient-drift {
+    background:
+      radial-gradient(60% 50% at 18% 18%, rgba(162, 144, 97, 0.16), transparent 70%),
+      radial-gradient(50% 50% at 82% 28%, rgba(74, 107, 83, 0.14), transparent 70%),
+      radial-gradient(60% 60% at 50% 110%, rgba(26, 46, 53, 0.10), transparent 70%);
+    animation: drift 18s ease-in-out infinite;
+  }
+}
+
+@layer utilities {
+  /* Display sizes — explicit, premium scale */
+  .text-display-1 { font-size: clamp(2.5rem, 6vw, 4.5rem); line-height: 1; letter-spacing: -0.035em; }
+  .text-display-2 { font-size: clamp(2rem, 4.5vw, 3rem); line-height: 1.04; letter-spacing: -0.025em; }
+  .text-display-3 { font-size: clamp(1.5rem, 3vw, 2rem); line-height: 1.08; letter-spacing: -0.02em; }
+  /* Animated SVG stroke draw helper */
+  .stroke-draw {
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+    animation: stroke-draw 0.9s 0.1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+  @keyframes stroke-draw {
+    to { stroke-dashoffset: 0; }
   }
 }
 

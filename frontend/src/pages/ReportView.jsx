@@ -39,7 +39,7 @@ function ScoreRing({ value, max = 5, size = 72, stroke = 6 }) {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-display text-xl font-black text-ink leading-none">{value.toFixed(1)}</span>
+        <span className="font-display text-xl font-black text-ink leading-none tabular-nums">{value.toFixed(1)}</span>
         <span className="text-[9px] text-ink-soft uppercase tracking-wider mt-0.5">/ {max}</span>
       </div>
     </div>
@@ -213,11 +213,22 @@ export default function ReportView() {
           {/* Per-dimension scores */}
           <section data-testid="report-dimensions">
             <h2 className="font-display text-2xl font-bold tracking-tight mb-5">Scoring breakdown</h2>
-            <div className="space-y-4">
+            <motion.div
+              className="space-y-4"
+              initial="hidden"
+              animate="show"
+              variants={{ hidden: {}, show: { transition: { staggerChildren: 0.07, delayChildren: 0.1 } } }}
+            >
               {e.scores.map((s) => (
-                <DimensionCard key={s.dimension_id} score={s} anchors={anchorByDim[s.dimension_id]} />
+                <motion.div
+                  key={s.dimension_id}
+                  variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}
+                  transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  <DimensionCard score={s} anchors={anchorByDim[s.dimension_id]} />
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           </section>
         </>
       )}

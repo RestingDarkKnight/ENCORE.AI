@@ -1,6 +1,8 @@
 import "@/App.css";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
 import { Toaster } from "sonner";
+import { useEffect } from "react";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
@@ -13,6 +15,7 @@ import CaseDetail from "@/pages/CaseDetail";
 import ReportView from "@/pages/ReportView";
 import TakeCase from "@/pages/TakeCase";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import PageTransition from "@/components/PageTransition";
 
 function Root() {
   const { manager, loading } = useAuth();
@@ -20,25 +23,47 @@ function Root() {
   return manager ? <Navigate to="/dashboard" replace /> : <Landing />;
 }
 
+// Scroll to top on route change — keeps page transitions readable
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
+  }, [pathname]);
+  return null;
+}
+
+// Wrap each route element so AnimatePresence can transition between them
+const wrap = (el) => <PageTransition>{el}</PageTransition>;
+
+function AnimatedRoutes() {
+  const location = useLocation();
+  return (
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        <Route path="/" element={wrap(<Root />)} />
+        <Route path="/login" element={wrap(<Login />)} />
+        <Route path="/signup" element={wrap(<Signup />)} />
+        <Route path="/take/:token" element={wrap(<TakeCase />)} />
+        <Route path="/dashboard" element={<ProtectedRoute>{wrap(<Dashboard />)}</ProtectedRoute>} />
+        <Route path="/roles" element={<ProtectedRoute>{wrap(<RolesList />)}</ProtectedRoute>} />
+        <Route path="/roles/new" element={<ProtectedRoute>{wrap(<CreateRole />)}</ProtectedRoute>} />
+        <Route path="/roles/:roleId" element={<ProtectedRoute>{wrap(<RoleDetail />)}</ProtectedRoute>} />
+        <Route path="/cases/:caseId" element={<ProtectedRoute>{wrap(<CaseDetail />)}</ProtectedRoute>} />
+        <Route path="/reports/:assignmentId" element={<ProtectedRoute>{wrap(<ReportView />)}</ProtectedRoute>} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </AnimatePresence>
+  );
+}
+
 export default function App() {
   return (
     <div className="App">
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            <Route path="/" element={<Root />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/take/:token" element={<TakeCase />} />
-            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/roles" element={<ProtectedRoute><RolesList /></ProtectedRoute>} />
-            <Route path="/roles/new" element={<ProtectedRoute><CreateRole /></ProtectedRoute>} />
-            <Route path="/roles/:roleId" element={<ProtectedRoute><RoleDetail /></ProtectedRoute>} />
-            <Route path="/cases/:caseId" element={<ProtectedRoute><CaseDetail /></ProtectedRoute>} />
-            <Route path="/reports/:assignmentId" element={<ProtectedRoute><ReportView /></ProtectedRoute>} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-          <Toaster position="top-right" richColors closeButton />
+          <ScrollToTop />
+          <AnimatedRoutes />
+          <Toaster position="top-right" closeButton expand={false} />
         </AuthProvider>
       </BrowserRouter>
     </div>

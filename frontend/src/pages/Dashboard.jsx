@@ -8,13 +8,17 @@ import {
 } from "@phosphor-icons/react";
 import BadgeStrip from "@/components/BadgeStrip";
 import PipelineStrip from "@/components/PipelineStrip";
+import useCountUp from "@/lib/useCountUp";
+import useBadgeNotifier from "@/lib/useBadgeNotifier";
 
+// MomentumCard — large progress ring + animated count-up of the underlying number.
 function MomentumCard({ label, value, target, icon: Icon, testid, accent = "brand" }) {
   const safeTarget = Math.max(1, target);
   const pct = Math.min(1, value / safeTarget);
   const stroke = "#1A2E35";
+  const display = useCountUp(value, { duration: 950, startDelay: 80 });
   return (
-    <div className="encore-card p-6 flex items-center gap-5" data-testid={testid}>
+    <div className="encore-card p-6 flex items-center gap-5 encore-card-hover" data-testid={testid}>
       <div className="relative h-16 w-16 shrink-0">
         <svg viewBox="0 0 36 36" className="h-16 w-16 -rotate-90">
           <circle cx="18" cy="18" r="15.915" fill="none" stroke="rgba(10,15,26,0.08)" strokeWidth="3" />
@@ -24,7 +28,7 @@ function MomentumCard({ label, value, target, icon: Icon, testid, accent = "bran
             strokeDasharray="100"
             initial={{ strokeDashoffset: 100 }}
             animate={{ strokeDashoffset: 100 - pct * 100 }}
-            transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 1.0, ease: [0.22, 1, 0.36, 1] }}
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
@@ -33,7 +37,7 @@ function MomentumCard({ label, value, target, icon: Icon, testid, accent = "bran
       </div>
       <div className="min-w-0">
         <p className="encore-overline mb-1">{label}</p>
-        <p className="font-display text-3xl font-black tracking-tighter leading-none">{value}</p>
+        <p className="font-display text-3xl font-black tracking-tighter leading-none tabular-nums">{display}</p>
         {target > 1 && (
           <p className="text-[11px] text-ink-soft mt-1">
             {value < target ? `Next milestone at ${target}` : "Milestone reached"}
@@ -68,6 +72,9 @@ export default function Dashboard() {
     })();
   }, []);
 
+  // Fire refined toast for any newly earned milestones (once per badge, per manager)
+  useBadgeNotifier(stats?.badges, manager?.id);
+
   // Compute next-milestone targets
   const target = (count, breakpoints = [1, 3, 5, 10]) => {
     const next = breakpoints.find((b) => count < b);
@@ -75,24 +82,20 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="space-y-10" data-testid="dashboard-page">
+    <div className="space-y-section" data-testid="dashboard-page">
       <header className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
         <div>
           <p className="encore-overline mb-2">Hiring Studio</p>
-          <h1 className="text-4xl sm:text-5xl font-display font-black tracking-tighter leading-[1.05]">
+          <h1 className="text-display-2 font-display font-black">
             Welcome, {manager?.full_name?.split(" ")[0] || "Manager"}.
           </h1>
-          <p className="text-ink-soft mt-3 max-w-xl">
+          <p className="text-ink-soft mt-3 max-w-xl text-base">
             Describe a role. ENCORE drafts a realistic work-simulation case with a scoring rubric. You approve, share, evaluate.
           </p>
         </div>
-        <Link
-          to="/roles/new"
-          data-testid="dashboard-new-role-button"
-          className="group inline-flex items-center gap-2 bg-brand hover:bg-brand-hover text-white rounded-lg px-5 py-3 transition-all hover:-translate-y-0.5 shadow-sm self-start md:self-auto"
-        >
+        <Link to="/roles/new" data-testid="dashboard-new-role-button" className="btn-primary group self-start md:self-auto px-5 py-3">
           <Plus size={16} weight="bold" />
-          <span className="font-medium">New role</span>
+          <span>New role</span>
           <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
         </Link>
       </header>
@@ -141,7 +144,7 @@ export default function Dashboard() {
 
       <section>
         <div className="flex items-baseline justify-between mb-5">
-          <h2 className="font-display text-2xl font-bold tracking-tight">Your roles</h2>
+          <h2 className="font-display text-display-3 font-bold">Your roles</h2>
           <Link to="/roles" className="text-sm text-ink-soft hover:text-ink" data-testid="dashboard-view-all-roles">
             View all
           </Link>
@@ -158,44 +161,50 @@ export default function Dashboard() {
             <p className="text-ink-soft max-w-md mx-auto mb-6">
               Add your first role to draft an AI-generated case study tailored to its responsibilities.
             </p>
-            <Link
-              to="/roles/new"
-              data-testid="empty-state-new-role-button"
-              className="inline-flex items-center gap-2 bg-brand hover:bg-brand-hover text-white rounded-lg px-5 py-2.5 transition-all hover:-translate-y-0.5"
-            >
+            <Link to="/roles/new" data-testid="empty-state-new-role-button" className="btn-primary">
               <Plus size={16} weight="bold" />
-              <span className="font-medium">Create your first role</span>
+              <span>Create your first role</span>
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <motion.div
+            initial="hidden"
+            animate="show"
+            variants={{ hidden: {}, show: { transition: { staggerChildren: 0.05 } } }}
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+          >
             {roles.slice(0, 6).map((role) => (
-              <Link
+              <motion.div
                 key={role.id}
-                to={`/roles/${role.id}`}
-                data-testid={`role-card-${role.id}`}
-                className="encore-card p-6 hover:-translate-y-0.5 transition-all hover:shadow-md group"
+                variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}
+                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
               >
-                <p className="encore-overline mb-2">{role.seniority} · {role.difficulty_level}</p>
-                <h3 className="font-display text-lg font-bold tracking-tight mb-1 group-hover:text-brand transition-colors">
-                  {role.job_title}
-                </h3>
-                {role.industry && <p className="text-sm text-ink-soft mb-3">{role.industry}</p>}
-                <div className="flex items-center justify-between text-xs text-ink-soft pt-3 border-t border-black/[0.05]">
-                  <span>{role.case_count} case{role.case_count === 1 ? "" : "s"}</span>
-                  <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
-                </div>
-              </Link>
+                <Link
+                  to={`/roles/${role.id}`}
+                  data-testid={`role-card-${role.id}`}
+                  className="encore-card encore-card-hover p-6 hover:-translate-y-0.5 transition-all group block"
+                >
+                  <p className="encore-overline mb-2">{role.seniority} · {role.difficulty_level}</p>
+                  <h3 className="font-display text-lg font-bold tracking-tight mb-1 group-hover:text-brand transition-colors">
+                    {role.job_title}
+                  </h3>
+                  {role.industry && <p className="text-sm text-ink-soft mb-3">{role.industry}</p>}
+                  <div className="flex items-center justify-between text-xs text-ink-soft pt-3 border-t border-black/[0.05]">
+                    <span className="tabular-nums">{role.case_count} case{role.case_count === 1 ? "" : "s"}</span>
+                    <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
+                  </div>
+                </Link>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
 
         {/* Candidate activity */}
-        <div className="mt-10">
+        <div className="mt-section">
           <div className="flex items-baseline justify-between mb-5">
-            <h2 className="font-display text-2xl font-bold tracking-tight">Candidate activity</h2>
+            <h2 className="font-display text-display-3 font-bold">Candidate activity</h2>
             {stats?.invited > 0 && (
-              <span className="text-xs text-ink-soft">{stats.invited} invited · {stats.submitted} submitted · {stats.evaluated} scored</span>
+              <span className="text-xs text-ink-soft tabular-nums">{stats.invited} invited · {stats.submitted} submitted · {stats.evaluated} scored</span>
             )}
           </div>
           {!stats?.invited ? (
@@ -208,11 +217,11 @@ export default function Dashboard() {
                 Approve a case, then send the unique link to candidates from inside the case page.
               </p>
               {roles.length > 0 ? (
-                <Link to={`/roles/${roles[0].id}`} data-testid="empty-state-go-to-case" className="inline-flex items-center gap-2 text-sm font-medium border border-black/15 hover:border-black/30 hover:bg-black/[0.02] rounded-lg px-4 py-2">
+                <Link to={`/roles/${roles[0].id}`} data-testid="empty-state-go-to-case" className="btn-quiet">
                   Open a case <ArrowRight size={13} />
                 </Link>
               ) : (
-                <Link to="/roles/new" className="inline-flex items-center gap-2 text-sm font-medium border border-black/15 hover:border-black/30 hover:bg-black/[0.02] rounded-lg px-4 py-2">
+                <Link to="/roles/new" className="btn-quiet">
                   Create your first role <ArrowRight size={13} />
                 </Link>
               )}
@@ -223,8 +232,8 @@ export default function Dashboard() {
                 <ScanSmiley weight="duotone" size={18} className="text-brand-moss" />
                 <span className="text-ink">
                   {stats.advanced > 0
-                    ? <>You&rsquo;ve advanced <strong>{stats.advanced}</strong> candidate{stats.advanced === 1 ? "" : "s"} so far.</>
-                    : <>{stats.submitted} candidate{stats.submitted === 1 ? "" : "s"} have submitted. Open a case to see scored reports.</>}
+                    ? <>You&rsquo;ve advanced <strong className="tabular-nums">{stats.advanced}</strong> candidate{stats.advanced === 1 ? "" : "s"} so far.</>
+                    : <><span className="tabular-nums">{stats.submitted}</span> candidate{stats.submitted === 1 ? "" : "s"} have submitted. Open a case to see scored reports.</>}
                 </span>
               </div>
             </div>
