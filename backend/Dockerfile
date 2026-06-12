@@ -25,6 +25,6 @@ EXPOSE 8001
 
 # Healthcheck endpoint (kept simple — Railway uses HTTP health on $PORT)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD curl -fsS "http://127.0.0.1:${PORT}/api/health" || exit 1
+  CMD curl -fsS "http://127.0.0.1:8001/api/health" || exit 1
 
 CMD ["sh", "-c", "uvicorn server:app --host 0.0.0.0 --port ${PORT}"]
