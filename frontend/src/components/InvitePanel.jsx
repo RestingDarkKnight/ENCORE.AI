@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "@/lib/api";
 import { toast } from "sonner";
@@ -19,16 +19,16 @@ export default function InvitePanel({ caseId, caseStatus }) {
   const [timeLimit, setTimeLimit] = useState(180);
   const [copiedTok, setCopiedTok] = useState(null);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     try {
       const { data } = await api.get(`/assignments/case/${caseId}`);
       setAssignments(data);
     } finally {
       setLoading(false);
     }
-  };
+  }, [caseId]);
 
-  useEffect(() => { refresh(); /* eslint-disable-next-line */ }, [caseId]);
+  useEffect(() => { refresh(); }, [refresh]);
 
   const invite = async (e) => {
     e.preventDefault();
