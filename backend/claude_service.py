@@ -77,17 +77,19 @@ def parse_json_strict(text: str, model: Type[T]) -> T:
         raise ValueError(f"JSON did not match expected shape: {e}") from e
 
 
-async def _claude_call(system: str, user: str, max_tokens: int = 4096, timeout: float = 90.0) -> str:
+async def _claude_call(system: str, user: str, max_tokens: int = 4096, timeout: float = 90.0, model_override: Optional[str] = None) -> str:
     """Run a Claude messages call in a worker thread; return the text content."""
     if not has_api_key():
         raise RuntimeError("ANTHROPIC_API_KEY is not configured on the server")
 
     from anthropic import Anthropic  # imported lazily so app starts without key
 
+    model_name = model_override or _model()
+
     def _do_call() -> str:
         client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"], timeout=timeout)
         resp = client.messages.create(
-            model=_model(),
+            model=model_name,
             max_tokens=max_tokens,
             system=system,
             messages=[{"role": "user", "content": user}],
@@ -109,12 +111,13 @@ async def call_claude_json(
     max_tokens: int = 4096,
     timeout: float = 90.0,
     max_attempts: int = 2,
+    model_override: Optional[str] = None,
 ) -> T:
     """Call Claude expecting strict JSON; retry once on parse/validation failure."""
     last_err: Optional[Exception] = None
     for attempt in range(1, max_attempts + 1):
         try:
-            text = await _claude_call(system=system, user=user, max_tokens=max_tokens, timeout=timeout)
+            text = await _claude_call(system=system, user=user, max_tokens=max_tokens, timeout=timeout, model_override=model_override)
             return parse_json_strict(text, model)
         except (ValueError, RuntimeError) as e:
             last_err = e

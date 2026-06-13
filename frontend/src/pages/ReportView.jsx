@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import {
   ArrowLeft, Sparkle, ArrowsClockwise, ThumbsUp, ThumbsDown, PauseCircle,
   Quotes, CheckCircle, Warning, FileText, Microphone, Trophy, Clock, Lightning,
+  CaretLeft, CaretRight, Share, Copy, Check, X as XIcon, EyeSlash, Eye, Printer,
 } from "@phosphor-icons/react";
 import api, { API_BASE } from "@/lib/api";
 
@@ -48,8 +49,11 @@ function ScoreRing({ value, max = 5, size = 72, stroke = 6 }) {
 
 export default function ReportView() {
   const { assignmentId } = useParams();
+  const [searchParams] = useSearchParams();
+  const fromCase = searchParams.get("case");
   const navigate = useNavigate();
   const [data, setData] = useState({ assignment: null, response: null, case: null, evaluation: null, decision: null });
+  const [siblings, setSiblings] = useState([]); // assignment_ids in same case, sorted by score
   const [loading, setLoading] = useState(true);
   const [evaluating, setEvaluating] = useState(false);
   const [decisionNote, setDecisionNote] = useState("");
@@ -69,14 +73,89 @@ export default function ReportView() {
         : null;
       setData({ assignment: a, response: respRes.data, case: caseRes.data, evaluation: evalRes.data, decision });
       if (decision?.note) setDecisionNote(decision.note);
+
+      // Load siblings for prev/next nav — only when arriving from Reports Hub
+      if (fromCase) {
+        try {
+          const { data: report } = await api.get(`/reports/case/${fromCase}`);
+          setSiblings(report.rows.map((r) => r.assignment_id));
+        } catch { /* noop */ }
+      }
     } catch (err) {
       toast.error(err?.response?.data?.detail || "Could not load report.");
     } finally {
       setLoading(false);
     }
-  }, [assignmentId]);
+  }, [assignmentId, fromCase]);
 
   useEffect(() => { load(); }, [load]);
+
+  // ---------- Share state ----------
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareData, setShareData] = useState(null); // { share_token, share_url, show_initials_only }
+  const [shareBusy, setShareBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!assignmentId) return;
+    (async () => {
+      try {
+        const { data } = await api.get(`/reports/${assignmentId}/share`);
+        setShareData(data || null);
+      } catch { /* noop */ }
+    })();
+  }, [assignmentId]);
+
+  const generateShare = async (initialsOnly = true) => {
+    setShareBusy(true);
+    try {
+      const { data: s } = await api.post(`/reports/${assignmentId}/share`, { show_initials_only: initialsOnly });
+      setShareData(s);
+      toast.success("Share link ready.");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Couldn\u2019t create share link.");
+    } finally {
+      setShareBusy(false);
+    }
+  };
+
+  const revokeShare = async () => {
+    if (!window.confirm("Revoke this share link? Anyone with the URL will lose access.")) return;
+    setShareBusy(true);
+    try {
+      await api.delete(`/reports/${assignmentId}/share`);
+      setShareData(null);
+      toast.success("Share link revoked.");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Couldn\u2019t revoke.");
+    } finally {
+      setShareBusy(false);
+    }
+  };
+
+  const copyShareUrl = async () => {
+    if (!shareData) return;
+    const fullUrl = `${window.location.origin}${shareData.share_url}`;
+    try {
+      await navigator.clipboard.writeText(fullUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Couldn\u2019t copy to clipboard.");
+    }
+  };
+
+  // ---------- Outcomes captured on this candidate ----------
+  const [outcomes, setOutcomes] = useState([]);
+  useEffect(() => {
+    if (!assignmentId) return;
+    (async () => {
+      try {
+        const { data } = await api.get(`/outcomes/by-assignment/${assignmentId}`);
+        setOutcomes(data || []);
+      } catch { /* noop */ }
+    })();
+  }, [assignmentId]);
 
   const runEvaluation = async () => {
     setEvaluating(true);
@@ -113,17 +192,85 @@ export default function ReportView() {
     return map;
   }, [data.case]);
 
-  if (loading) return <div className="text-center text-ink-soft py-16">Loading report…</div>;
+  if (loading) return <div className="text-center text-ink-soft py-16">Loading report&hellip;</div>;
   if (!data.assignment) return <div className="text-center text-ink-soft py-16">Report not found.</div>;
 
   const { assignment: a, response: r, case: c, evaluation: e, decision } = data;
   const recCfg = e ? REC[e.recommendation] : null;
 
+  // Prev/next neighbour computation
+  const curIdx = siblings.indexOf(assignmentId);
+  const prevId = curIdx > 0 ? siblings[curIdx - 1] : null;
+  const nextId = curIdx >= 0 && curIdx < siblings.length - 1 ? siblings[curIdx + 1] : null;
+
   return (
-    <div className="max-w-5xl mx-auto space-y-10" data-testid="report-view">
-      <Link to={`/cases/${a.case_id}`} className="inline-flex items-center gap-1.5 text-sm text-ink-soft hover:text-ink" data-testid="report-back">
-        <ArrowLeft size={14} /> Back to case
-      </Link>
+    <div className="max-w-5xl mx-auto space-y-10" id="shared-report-printable" data-testid="report-view">
+      {/* Breadcrumb + prev/next */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <nav className="flex items-center gap-1.5 text-sm text-ink-soft flex-wrap" data-testid="report-breadcrumb">
+          {fromCase ? (
+            <>
+              <Link to="/reports" className="hover:text-ink">Reports</Link>
+              <CaretRight size={11} className="text-ink-muted" />
+              <Link to="/reports" onClick={(ev) => { ev.preventDefault(); navigate(-1); }} className="hover:text-ink">{c?.title || "Case"}</Link>
+              <CaretRight size={11} className="text-ink-muted" />
+              <span className="text-ink truncate max-w-[12rem]">{a.candidate_name || a.candidate_email}</span>
+            </>
+          ) : (
+            <Link to={`/cases/${a.case_id}`} className="inline-flex items-center gap-1.5 hover:text-ink" data-testid="report-back">
+              <ArrowLeft size={14} /> Back to case
+            </Link>
+          )}
+        </nav>
+        {siblings.length > 1 && (
+          <div className="flex items-center gap-1" data-testid="report-siblings-nav">
+            <button
+              type="button"
+              onClick={() => prevId && navigate(`/reports/${prevId}?case=${fromCase}`)}
+              disabled={!prevId}
+              data-testid="report-prev-candidate"
+              className="inline-flex items-center gap-1 text-xs font-medium border border-black/15 hover:border-black/30 hover:bg-black/[0.02] disabled:opacity-40 disabled:hover:bg-transparent rounded-lg px-2.5 py-1.5 transition-colors"
+              title="Previous candidate"
+            >
+              <CaretLeft size={12} /> Prev
+            </button>
+            <span className="text-xs text-ink-soft tabular-nums px-2">
+              {curIdx + 1} / {siblings.length}
+            </span>
+            <button
+              type="button"
+              onClick={() => nextId && navigate(`/reports/${nextId}?case=${fromCase}`)}
+              disabled={!nextId}
+              data-testid="report-next-candidate"
+              className="inline-flex items-center gap-1 text-xs font-medium border border-black/15 hover:border-black/30 hover:bg-black/[0.02] disabled:opacity-40 disabled:hover:bg-transparent rounded-lg px-2.5 py-1.5 transition-colors"
+              title="Next candidate"
+            >
+              Next <CaretRight size={12} />
+            </button>
+          </div>
+        )}
+        {/* Share + Print actions — always available when an evaluation exists */}
+        {e && (
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setShareOpen(true)}
+              data-testid="report-share-button"
+              className="inline-flex items-center gap-1.5 text-xs font-medium border border-black/15 hover:border-black/30 hover:bg-black/[0.02] rounded-lg px-2.5 py-1.5 transition-colors"
+            >
+              <Share size={12} /> Share
+            </button>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              data-testid="report-print-button"
+              className="inline-flex items-center gap-1.5 text-xs font-medium border border-black/15 hover:border-black/30 hover:bg-black/[0.02] rounded-lg px-2.5 py-1.5 transition-colors"
+            >
+              <Printer size={12} /> PDF
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Header */}
       <header className="encore-card p-7">
@@ -316,6 +463,120 @@ export default function ReportView() {
             </p>
           )}
         </section>
+      )}
+
+      {/* Captured 30/90-day outcomes */}
+      {outcomes.length > 0 && (
+        <section className="encore-card p-7" data-testid="outcomes-section">
+          <p className="encore-overline mb-1">Post-hire outcomes</p>
+          <h2 className="font-display text-xl font-bold tracking-tight">How this hire is doing</h2>
+          <div className="mt-4 grid sm:grid-cols-2 gap-3" data-testid="outcomes-list">
+            {outcomes.map((o) => (
+              <div key={o.id} className="border border-black/[0.06] rounded-lg p-4" data-testid={`outcome-${o.window}`}>
+                <p className="encore-overline mb-1">{o.window === "30d" ? "30-day check-in" : "90-day check-in"}</p>
+                <div className="flex items-center gap-3 text-sm">
+                  <span className="font-display font-black text-lg tabular-nums text-brand">{o.performing}/5</span>
+                  <span className={`inline-flex items-center text-[10px] font-bold uppercase tracking-wider border rounded-full px-2 py-0.5 ${o.would_hire_again ? "border-brand-moss/30 text-brand-moss" : "border-signal-error/30 text-signal-error"}`}>
+                    {o.would_hire_again ? "Would hire again" : "Would not"}
+                  </span>
+                </div>
+                {o.comment && <p className="text-sm text-ink mt-2 leading-relaxed">{o.comment}</p>}
+                <p className="text-[10px] text-ink-soft mt-2">Recorded {new Date(o.recorded_at).toLocaleDateString()}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Share modal */}
+      {shareOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/30 backdrop-blur-sm" data-testid="share-modal">
+          <div className="bg-white rounded-xl shadow-lift max-w-md w-full p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <p className="encore-overline mb-1">Share this report</p>
+                <h3 className="font-display text-xl font-bold tracking-tight">Read-only public link</h3>
+              </div>
+              <button onClick={() => setShareOpen(false)} className="p-1 hover:bg-black/[0.04] rounded-md text-ink-soft" data-testid="share-modal-close">
+                <XIcon size={16} />
+              </button>
+            </div>
+
+            {shareData ? (
+              <>
+                <div className="flex items-center gap-2 mb-4">
+                  <input
+                    readOnly
+                    value={`${window.location.origin}${shareData.share_url}`}
+                    data-testid="share-url-input"
+                    className="flex-1 bg-canvas border border-black/10 rounded-lg px-3 py-2 text-xs font-mono text-ink-soft focus:ring-2 focus:ring-brand/20 outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={copyShareUrl}
+                    data-testid="share-copy-button"
+                    className="btn-quiet text-sm px-3 py-2"
+                  >
+                    {copied ? <Check size={13} className="text-brand-moss" /> : <Copy size={13} />}
+                    {copied ? "Copied" : "Copy"}
+                  </button>
+                </div>
+
+                <label className="flex items-start gap-2 cursor-pointer mb-5">
+                  <input
+                    type="checkbox"
+                    checked={!!shareData.show_initials_only}
+                    onChange={(ev) => generateShare(ev.target.checked)}
+                    disabled={shareBusy}
+                    data-testid="share-initials-toggle"
+                    className="mt-0.5 h-3.5 w-3.5 rounded border-black/20 text-brand focus:ring-brand/20"
+                  />
+                  <span className="text-sm text-ink leading-snug">
+                    <span className="inline-flex items-center gap-1">
+                      {shareData.show_initials_only ? <EyeSlash size={12} /> : <Eye size={12} />}
+                      Show candidate as initials only
+                    </span>
+                    <span className="block text-xs text-ink-soft">When ON, the public page replaces the candidate&rsquo;s name with their initials.</span>
+                  </span>
+                </label>
+
+                <div className="flex items-center justify-between gap-2 pt-4 border-t border-black/[0.05]">
+                  <button
+                    type="button"
+                    onClick={revokeShare}
+                    disabled={shareBusy}
+                    data-testid="share-revoke-button"
+                    className="text-xs font-medium text-signal-error hover:text-signal-error/80 disabled:opacity-50"
+                  >
+                    Revoke link
+                  </button>
+                  <a
+                    href={shareData.share_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    data-testid="share-open-link"
+                    className="btn-quiet text-sm px-3 py-1.5"
+                  >
+                    Preview
+                  </a>
+                </div>
+              </>
+            ) : (
+              <div>
+                <p className="text-sm text-ink-soft mb-5">Generate a tokenized URL that opens this report with no login required. Revoke any time.</p>
+                <button
+                  type="button"
+                  onClick={() => generateShare(true)}
+                  disabled={shareBusy}
+                  data-testid="share-generate-button"
+                  className="btn-primary w-full justify-center"
+                >
+                  <Share size={14} weight="bold" /> {shareBusy ? "Generating\u2026" : "Generate share link"}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

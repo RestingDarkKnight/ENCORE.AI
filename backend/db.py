@@ -42,6 +42,9 @@ async def ensure_indexes() -> None:
     # Decisions - by response (one current decision per response)
     await db.decisions.create_index("response_id", unique=True)
     await db.decisions.create_index("manager_id")
+    # Hire outcomes — at most one per (assignment, window)
+    await db.hire_outcomes.create_index([("assignment_id", 1), ("window", 1)], unique=True)
+    await db.hire_outcomes.create_index("manager_id")
 
 
 def close_client() -> None:

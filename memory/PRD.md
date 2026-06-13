@@ -110,6 +110,60 @@ A hiring manager describes a role; ENCORE uses Claude to generate a tailored cas
 - **D4 Quality bar**: Mobile Take-Case header unchanged from Phase 4 (already responsive at 390px). All interactive elements keyboard-navigable with visible focus rings. No layout shift — `PipelineStrip` and `BadgeStrip` gated on stats load. Reduced-motion verified on every new animation (PageTransition, useCountUp, GenerationTicker, hero, scroll reveals).
 - Verified: testing agent + visual smoke pass. Chip swarm live-tested (add 3 / remove 1 with spring animation). Landing GSAP timeline confirmed not stuck (all `[data-anim='headline-word']` settled at opacity 1). 0 console errors, 0 pageerrors across Landing, Dashboard, Roles list, Role detail. Source-reviewed for surfaces with no live data (badge subsequent-visit toast, generation ticker active state, ReportView with no completed evaluations).
 
+### Phase B — Reports Hub & Candidate Mapping ✅ (2026-06-13)
+- **Backend** `routes_reports.py`:
+  - `GET /api/reports/summary` — per-case summary across the manager: invited / submitted / evaluated counts, avg overall score, recommendation distribution (`strong_hire | hire | borderline | no_hire`), per-dimension averages.
+  - `GET /api/reports/case/{case_id}` — full candidate mapping: every assignment with status, submitted_at, overall score, per-dimension scores, recommendation, decision, strengths, concerns, summary. Default sort: evaluated first by score desc.
+- **Frontend** `/reports` (`Reports.jsx`):
+  - Top: per-case cards with funnel (invited → submitted → scored), animated average-score ring, recommendation-distribution stacked bar.
+  - Click → inline drill-down: dimension averages panel + ranked candidate table (sort by score / submitted / status).
+  - Each row deep-links to `/reports/:assignmentId?case={caseId}` so the existing report view knows where to put breadcrumb + prev/next.
+- **B3 ReportView** breadcrumb (Reports › Case › Candidate) + Prev / Next neighbour navigation when arriving from the hub.
+- **Nav**: "Reports" entry added to AppShell.
+
+### Phase C — Skill Swarm & "Generate with AI" Assists ✅ (2026-06-13)
+- **Backend** `routes_suggest.py`:
+  - `POST /api/suggest` (manager auth) with `kind = technical_skills | soft_skills | success_criteria | common_challenges`.
+  - Calls **claude-haiku-4-5** (`CLAUDE_HAIKU_MODEL` env, default `claude-haiku-4-5`) with `max_tokens=500`, 2 retries max, 20s timeout.
+  - **Process-wide in-memory cache** keyed by `(kind | title | industry | seniority | existing-set)` with 1-hour TTL — repeated wizard renders don't re-bill.
+  - **Static taxonomy fallback** for Indian core-engineering SMEs (metallurgy, mechanical, civil, chemical, manufacturing, QA, foundry) so the wizard always has 12+ relevant chips even with no Claude key.
+  - Always strips suggestions already in `existing` before returning.
+- **Frontend** `CreateRole.jsx`:
+  - `useSuggest` hook with **session-memory cache** + inflight dedupe.
+  - Skills steps: lazy-fetch on entry, "AI" refresh button beside Add, secondary "Refresh" link, staggered chip swarm animation (40ms steps).
+  - Success-criteria & common-challenges textareas each get a "Generate with AI" affordance that drops an editable 2-3 sentence draft into the field.
+  - All AI affordances respect `prefers-reduced-motion` and gracefully degrade to seeded taxonomy when Claude isn't configured.
+
+### Phase E2 — Shareable read-only reports + PDF ✅ (2026-06-13)
+- **Backend** `routes_share.py`:
+  - `POST /api/reports/{assignment_id}/share` — generates / refreshes a 32-byte URL-safe share token; accepts `{ show_initials_only }` privacy toggle.
+  - `GET /api/reports/{assignment_id}/share` — fetch current share state (or 200 + null).
+  - `DELETE /api/reports/{assignment_id}/share` — revoke.
+  - `GET /api/shared/report/{share_token}` — **PUBLIC, no auth**. Returns a sanitized payload: candidate display string (initials or full name per toggle), case title, role title, overall score, recommendation, per-dimension scores with justification + quote, strengths, concerns, summary. No internal IDs leaked.
+- **Frontend** `/r/:shareToken` (`SharedReport.jsx`):
+  - Read-only page (no nav, no decision UI) with a "Download PDF" button that triggers `window.print()`.
+  - Print stylesheet (`@media print`) in `index.css` lays out a clean one-pager (A4, 14mm margins, layered shadows stripped, page-break-inside avoid on cards, animations disabled). Zero dependencies.
+- **ReportView** gains a Share button → modal: copy link, toggle initials-only, preview, revoke. Print button calls `window.print()` (manager view also has the printable id so it prints cleanly).
+
+### Phase E3 — Candidate comparison ✅ (2026-06-13)
+- **Frontend** `/reports/compare/:caseId?ids=a,b,c` (`CompareCandidates.jsx`):
+  - Reuses `GET /api/reports/case/{case_id}` — no new backend needed.
+  - Three rows of comparison, all aligned on the same rubric axis:
+    1. Top row: candidate name, overall-score ring, recommendation pill, decision buttons (advance / hold / reject — decision recorded inline without leaving the page).
+    2. Dimension breakdown: every rubric dimension as a horizontal bar, side-by-side per candidate (max 3) so deltas read instantly.
+    3. Narratives: top strength + top concern per candidate.
+- **Reports drill-down**: checkbox per evaluated row (max 3) + floating "Compare N candidates" CTA that animates up from the bottom when ≥2 selected.
+
+### Phase E4 — 30/90-day outcome capture ✅ (2026-06-13)
+- **New collection** `hire_outcomes` with unique compound index `(assignment_id, window)`.
+- **Backend** `routes_outcomes.py`:
+  - `POST /api/outcomes` — record an outcome (`window: 30d|90d`, `performing: 1-5`, `would_hire_again: bool`, optional `comment`). Upserts at most one per window per candidate. Only valid for candidates whose decision is `advance`.
+  - `GET /api/outcomes/by-assignment/{id}` — list outcomes for one candidate.
+  - `GET /api/outcomes/due` — surfaces hires whose decision is ≥30 or ≥90 days old with no outcome for that window. Sorted most-overdue first.
+- **Frontend** `OutcomesDueCard.jsx` on the Dashboard — appears only when at least one check-in is due. Each row expands inline to a 3-field form (5-star rating, would-hire-again yes/no, optional comment). Saves in <10s of work.
+- **ReportView** shows captured outcomes as a "Post-hire outcomes" panel (30-day / 90-day cards with performing/5, would-hire-again pill, and the comment).
+- **Out of scope** (intentionally): automated email nudges — manual + dashboard surfacing only in v1.
+
 ## Backlog
 ### P0 — needed before Phase 2 sign-off by user
 - (None — Phase 1 acceptance is: signup → wizard → generate → edit → approve. All in place.)

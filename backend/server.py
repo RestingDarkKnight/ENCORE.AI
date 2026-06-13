@@ -16,9 +16,13 @@ from routes_assignments import router as assignments_router  # noqa: E402
 from routes_auth import router as auth_router  # noqa: E402
 from routes_cases import router as cases_router  # noqa: E402
 from routes_evaluation import router as evaluation_router  # noqa: E402
+from routes_outcomes import router as outcomes_router  # noqa: E402
+from routes_reports import router as reports_router  # noqa: E402
 from routes_responses import router as responses_router  # noqa: E402
 from routes_roles import router as roles_router  # noqa: E402
+from routes_share import router as share_router  # noqa: E402
 from routes_stats import router as stats_router  # noqa: E402
+from routes_suggest import router as suggest_router  # noqa: E402
 from routes_take import router as take_router  # noqa: E402
 from seed import seed_demo_manager  # noqa: E402
 from storage_client import init_storage  # noqa: E402
@@ -67,7 +71,11 @@ api.include_router(cases_router)
 api.include_router(assignments_router)
 api.include_router(responses_router)
 api.include_router(evaluation_router)
+api.include_router(outcomes_router)
+api.include_router(reports_router)
+api.include_router(share_router)
 api.include_router(stats_router)
+api.include_router(suggest_router)
 api.include_router(take_router)
 
 app.include_router(api)

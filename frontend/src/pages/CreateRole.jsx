@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import api from "@/lib/api";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, X, CheckCircle, Lightning } from "@phosphor-icons/react";
+import { ArrowLeft, ArrowRight, X, CheckCircle, Lightning, Sparkle, ArrowsClockwise } from "@phosphor-icons/react";
 import { motion, AnimatePresence } from "framer-motion";
+import useSuggest from "@/lib/useSuggest";
 
 const SENIORITY = [
   { id: "junior", label: "Junior", hint: "0–2 yrs" },
@@ -98,8 +99,92 @@ export default function CreateRole() {
   };
 
   const progress = done ? 100 : ((step + 1) / STEPS.length) * 100;
-  const techSuggestions = suggestTech(form.job_title).filter((s) => !form.technical_skills.includes(s));
-  const softSuggestions = SUGGESTED_SOFT.filter((s) => !form.soft_skills.includes(s));
+
+  // AI-powered suggestion state — falls back to static seeds if Claude is unavailable
+  const { fetchSuggest, loading: suggestLoading } = useSuggest();
+  const [techSuggestions, setTechSuggestions] = useState([]);
+  const [softSuggestions, setSoftSuggestions] = useState([]);
+
+  // Lazy-fetch suggestions when the user lands on the skills step
+  useEffect(() => {
+    let cancel = false;
+    const run = async () => {
+      if (step === 2 && techSuggestions.length === 0 && form.job_title.trim()) {
+        const r = await fetchSuggest({
+          kind: "technical_skills",
+          jobTitle: form.job_title,
+          industry: form.industry,
+          seniority: form.seniority,
+          existing: form.technical_skills,
+        });
+        if (!cancel && r) setTechSuggestions(r.suggestions || []);
+      }
+      if (step === 3 && softSuggestions.length === 0 && form.job_title.trim()) {
+        const r = await fetchSuggest({
+          kind: "soft_skills",
+          jobTitle: form.job_title,
+          industry: form.industry,
+          seniority: form.seniority,
+          existing: form.soft_skills,
+        });
+        if (!cancel && r) setSoftSuggestions(r.suggestions || []);
+      }
+    };
+    run();
+    return () => { cancel = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
+  const refreshTech = async () => {
+    const r = await fetchSuggest({
+      kind: "technical_skills",
+      jobTitle: form.job_title,
+      industry: form.industry,
+      seniority: form.seniority,
+      existing: form.technical_skills,
+      force: true,
+    });
+    if (r) setTechSuggestions(r.suggestions || []);
+  };
+  const refreshSoft = async () => {
+    const r = await fetchSuggest({
+      kind: "soft_skills",
+      jobTitle: form.job_title,
+      industry: form.industry,
+      seniority: form.seniority,
+      existing: form.soft_skills,
+      force: true,
+    });
+    if (r) setSoftSuggestions(r.suggestions || []);
+  };
+
+  // AI draft buttons for success criteria & common challenges
+  const [draftBusy, setDraftBusy] = useState(null); // 'success_criteria' | 'common_challenges' | null
+  const draftField = async (kind) => {
+    setDraftBusy(kind);
+    try {
+      const r = await fetchSuggest({
+        kind,
+        jobTitle: form.job_title,
+        industry: form.industry,
+        seniority: form.seniority,
+        existing: [],
+        force: true,
+      });
+      if (r?.draft) {
+        setField(kind, r.draft);
+        toast.success("Draft generated. Edit freely.");
+      } else {
+        toast.error("Couldn't generate a draft.");
+      }
+    } finally {
+      setDraftBusy(null);
+    }
+  };
+
+  // Remove suggestions that the user already picked
+  const filteredTechSuggestions = techSuggestions.filter((s) => !form.technical_skills.includes(s));
+  const filteredSoftSuggestions = softSuggestions.filter((s) => !form.soft_skills.includes(s));
 
   return (
     <div className="max-w-2xl mx-auto" data-testid="create-role-page">
@@ -216,8 +301,10 @@ export default function CreateRole() {
                 setInput={setTechInput}
                 onAdd={() => addChip("technical_skills", techInput, setTechInput)}
                 onRemove={(v) => removeChip("technical_skills", v)}
-                suggestions={techSuggestions}
+                suggestions={filteredTechSuggestions}
                 onSuggest={(s) => setForm((f) => ({ ...f, technical_skills: [...f.technical_skills, s] }))}
+                onRefresh={refreshTech}
+                refreshing={suggestLoading}
                 testidPrefix="step-tech"
               />
             )}
@@ -235,8 +322,10 @@ export default function CreateRole() {
                   setInput={setSoftInput}
                   onAdd={() => addChip("soft_skills", softInput, setSoftInput)}
                   onRemove={(v) => removeChip("soft_skills", v)}
-                  suggestions={softSuggestions}
+                  suggestions={filteredSoftSuggestions}
                   onSuggest={(s) => setForm((f) => ({ ...f, soft_skills: [...f.soft_skills, s] }))}
+                  onRefresh={refreshSoft}
+                  refreshing={suggestLoading}
                   testidPrefix="step-soft"
                 />
               </>
@@ -245,7 +334,20 @@ export default function CreateRole() {
             {step === 4 && (
               <div className="space-y-5">
                 <div>
-                  <label className="block text-sm font-medium text-ink-soft mb-1.5">What does success look like in this role?</label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-sm font-medium text-ink-soft">What does success look like in this role?</label>
+                    <button
+                      type="button"
+                      onClick={() => draftField("success_criteria")}
+                      disabled={draftBusy === "success_criteria" || !form.job_title.trim()}
+                      data-testid="ai-draft-success"
+                      className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-brand-sand hover:text-brand-hover disabled:opacity-40 transition-colors"
+                      title={!form.job_title.trim() ? "Add a job title first" : "Draft with AI"}
+                    >
+                      <Sparkle weight={draftBusy === "success_criteria" ? "duotone" : "fill"} size={11} className={draftBusy === "success_criteria" ? "animate-spin" : ""} />
+                      {draftBusy === "success_criteria" ? "Drafting…" : "Generate with AI"}
+                    </button>
+                  </div>
                   <textarea
                     value={form.success_criteria}
                     onChange={update("success_criteria")}
@@ -256,7 +358,20 @@ export default function CreateRole() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-ink-soft mb-1.5">Common real-world challenges</label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-sm font-medium text-ink-soft">Common real-world challenges</label>
+                    <button
+                      type="button"
+                      onClick={() => draftField("common_challenges")}
+                      disabled={draftBusy === "common_challenges" || !form.job_title.trim()}
+                      data-testid="ai-draft-challenges"
+                      className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-brand-sand hover:text-brand-hover disabled:opacity-40 transition-colors"
+                      title={!form.job_title.trim() ? "Add a job title first" : "Draft with AI"}
+                    >
+                      <Sparkle weight={draftBusy === "common_challenges" ? "duotone" : "fill"} size={11} className={draftBusy === "common_challenges" ? "animate-spin" : ""} />
+                      {draftBusy === "common_challenges" ? "Drafting…" : "Generate with AI"}
+                    </button>
+                  </div>
                   <textarea
                     value={form.common_challenges}
                     onChange={update("common_challenges")}
@@ -336,7 +451,7 @@ export default function CreateRole() {
   );
 }
 
-function ChipStep({ label, placeholder, items, input, setInput, onAdd, onRemove, suggestions, onSuggest, testidPrefix }) {
+function ChipStep({ label, placeholder, items, input, setInput, onAdd, onRemove, suggestions, onSuggest, onRefresh, refreshing, testidPrefix }) {
   return (
     <div>
       <label className="block text-sm font-medium text-ink-soft mb-1.5">{label}</label>
@@ -357,6 +472,19 @@ function ChipStep({ label, placeholder, items, input, setInput, onAdd, onRemove,
         >
           Add
         </button>
+        {onRefresh && (
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={refreshing}
+            data-testid={`${testidPrefix}-ai-refresh`}
+            className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-lg bg-brand-sand/10 hover:bg-brand-sand/15 text-brand-sand text-sm font-medium disabled:opacity-50 transition-colors"
+            title="Suggest with AI"
+          >
+            <Sparkle weight="fill" size={13} className={refreshing ? "animate-pulse" : ""} />
+            {refreshing ? "Thinking" : "AI"}
+          </button>
+        )}
       </div>
       {items.length > 0 && (
         <motion.div
@@ -388,21 +516,42 @@ function ChipStep({ label, placeholder, items, input, setInput, onAdd, onRemove,
         </motion.div>
       )}
       {suggestions?.length > 0 && (
-        <div className="mt-4">
-          <p className="encore-overline mb-2">Suggestions</p>
-          <div className="flex flex-wrap gap-2">
-            {suggestions.map((s) => (
+        <div className="mt-5">
+          <div className="flex items-baseline justify-between mb-2">
+            <p className="encore-overline">Suggestions {refreshing && <span className="text-brand-sand ml-1.5">refreshing…</span>}</p>
+            {onRefresh && (
               <button
+                type="button"
+                onClick={onRefresh}
+                disabled={refreshing}
+                data-testid={`${testidPrefix}-ai-refresh-inline`}
+                className="text-[10px] font-medium text-ink-soft hover:text-ink inline-flex items-center gap-1 disabled:opacity-40"
+              >
+                <ArrowsClockwise size={11} className={refreshing ? "animate-spin" : ""} /> Refresh
+              </button>
+            )}
+          </div>
+          <motion.div
+            className="flex flex-wrap gap-1.5"
+            initial="hidden"
+            animate="show"
+            variants={{ hidden: {}, show: { transition: { staggerChildren: 0.03 } } }}
+            key={suggestions.join("|")}
+          >
+            {suggestions.map((s) => (
+              <motion.button
                 key={s}
                 type="button"
                 onClick={() => onSuggest(s)}
+                variants={{ hidden: { opacity: 0, y: 4, scale: 0.92 }, show: { opacity: 1, y: 0, scale: 1 } }}
+                transition={{ type: "spring", stiffness: 380, damping: 26 }}
                 data-testid={`${testidPrefix}-suggest-${s.replace(/\s+/g, "-")}`}
-                className="text-xs bg-transparent border border-dashed border-black/15 text-ink-soft hover:text-ink hover:border-black/30 rounded-full px-3 py-1 transition-all"
+                className="text-xs bg-transparent border border-dashed border-black/15 text-ink-soft hover:text-brand hover:bg-brand/5 hover:border-brand/30 rounded-full px-3 py-1 transition-all"
               >
                 + {s}
-              </button>
+              </motion.button>
             ))}
-          </div>
+          </motion.div>
         </div>
       )}
     </div>

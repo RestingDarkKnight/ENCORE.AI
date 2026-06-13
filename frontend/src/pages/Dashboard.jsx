@@ -8,6 +8,7 @@ import {
 } from "@phosphor-icons/react";
 import BadgeStrip from "@/components/BadgeStrip";
 import PipelineStrip from "@/components/PipelineStrip";
+import OutcomesDueCard from "@/components/OutcomesDueCard";
 import useCountUp from "@/lib/useCountUp";
 import useBadgeNotifier from "@/lib/useBadgeNotifier";
 
@@ -113,6 +114,9 @@ export default function Dashboard() {
 
       {/* Badges */}
       {stats?.badges && <BadgeStrip badges={stats.badges} />}
+
+      {/* 30/90-day outcome check-ins */}
+      <OutcomesDueCard />
 
       {/* AI engine status */}
       <section data-testid="claude-status-section" className="encore-card p-6">

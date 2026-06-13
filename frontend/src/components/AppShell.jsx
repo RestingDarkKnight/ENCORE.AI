@@ -46,6 +46,17 @@ export default function AppShell({ children }) {
             >
               Roles
             </NavLink>
+            <NavLink
+              to="/reports"
+              data-testid="nav-reports"
+              className={({ isActive }) =>
+                `px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  isActive ? "text-ink bg-black/[0.04]" : "text-ink-soft hover:text-ink"
+                }`
+              }
+            >
+              Reports
+            </NavLink>
             <div className="mx-2 h-5 w-px bg-black/10" />
             <div className="flex items-center gap-2 pl-1" data-testid="manager-pill">
               <div className="h-7 w-7 rounded-full bg-brand/10 text-brand flex items-center justify-center">
