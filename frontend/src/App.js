@@ -12,6 +12,7 @@ import RolesList from "@/pages/RolesList";
 import CreateRole from "@/pages/CreateRole";
 import RoleDetail from "@/pages/RoleDetail";
 import CaseDetail from "@/pages/CaseDetail";
+import GuidedCase from "@/pages/GuidedCase";
 import ReportView from "@/pages/ReportView";
 import Reports from "@/pages/Reports";
 import CompareCandidates from "@/pages/CompareCandidates";
@@ -53,6 +54,7 @@ function AnimatedRoutes() {
         <Route path="/roles/new" element={<ProtectedRoute>{wrap(<CreateRole />)}</ProtectedRoute>} />
         <Route path="/roles/:roleId" element={<ProtectedRoute>{wrap(<RoleDetail />)}</ProtectedRoute>} />
         <Route path="/cases/:caseId" element={<ProtectedRoute>{wrap(<CaseDetail />)}</ProtectedRoute>} />
+        <Route path="/roles/:roleId/cases/new-guided" element={<ProtectedRoute>{wrap(<GuidedCase />)}</ProtectedRoute>} />
         <Route path="/reports" element={<ProtectedRoute>{wrap(<Reports />)}</ProtectedRoute>} />
         <Route path="/reports/compare/:caseId" element={<ProtectedRoute>{wrap(<CompareCandidates />)}</ProtectedRoute>} />
         <Route path="/reports/:assignmentId" element={<ProtectedRoute>{wrap(<ReportView />)}</ProtectedRoute>} />

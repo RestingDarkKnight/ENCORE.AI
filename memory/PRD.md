@@ -164,6 +164,50 @@ A hiring manager describes a role; ENCORE uses Claude to generate a tailored cas
 - **ReportView** shows captured outcomes as a "Post-hire outcomes" panel (30-day / 90-day cards with performing/5, would-hire-again pill, and the comment).
 - **Out of scope** (intentionally): automated email nudges — manual + dashboard surfacing only in v1.
 
+### Phase Agentic-v1 — Six-Agent Collaborative Workflow ✅ (2026-06-16)
+
+**Module 1 — Substrate**
+- 5 new Mongo collections: `agent_memories`, `agent_feedback`, `agent_metrics_daily`, `knowledge_chunks`, `case_workflow_state` (all indexed for manager+domain+time lookups; agent_memories has TTL via expires_at).
+- `agents/memory.py` — tiered retrieval (exact `manager+domain` → manager-only → system-wide pads up to 15 entries), strict entry_type validation per agent, formatted memory block for prompts, feedback log.
+- `agents/retrieval.py` — OpenAI `text-embedding-3-small` (via Emergent LLM key, 1536-dim, in-process cache); tries Atlas `$vectorSearch` first, transparently falls back to in-memory cosine. Background indexer for approved-case scenarios+rubric+notes.
+- `agents/workflow_state.py` — resume-from-anywhere persistence; 8-call hard cap enforced server-side.
+- `normalize_domain_key()` from `(role.industry, role.seniority)`.
+
+**Module 2 — Six agents**
+- `agents/prompts.py` — strict Pydantic JSON contracts per agent (Analyst, Theory Researcher, Architect, Generator, Critic, Polisher) + per-agent system prompts + max_tokens (1500 / 1500 / 1500 / 4000 / 1500 / 4000).
+- `agents/orchestrator.py` — composes `system + memory_block + (knowledge_block for theory) + prior_outputs + task` per agent; one Claude call (Opus by default, configurable via `CLAUDE_MODEL`); persists output + reasoning_summary + memory IDs used.
+- `routes_workflow.py` — `POST /api/workflows`, `GET /api/workflows/{id}`, `POST /api/workflows/{id}/run/{step}`, `POST /api/workflows/{id}/feedback`, `POST /api/workflows/{id}/finalize` (creates a Case row from final output and links workflow→case), `GET /api/workflows/by-role/{role_id}` for resume.
+
+**Module 3.1 — Feedback routing**
+- Every user action (Continue / Revise / Pick shape / Apply revisions / Approve) sends a `feedback` event keyed to the responsible agent.
+- Background extraction call (Haiku 4.5, max_tokens=200, fail-soft) converts each feedback event into a structured `agent_memories` entry with a validated `entry_type` per agent. Raw fallback preserves the signal even if Claude is unavailable.
+- Memory is automatically used in subsequent calls — no manual wiring needed.
+
+**Module 3.4 — Show-your-thinking UI**
+- New route `/roles/:roleId/cases/new-guided` (`GuidedCase.jsx`).
+- Persistent 6-step progress strip; current step pulses; clickable to view read-only past output.
+- Per-step "Show reasoning" panel with the agent's `reasoning_summary` and a "Memory used: N prior interactions informed this step" line.
+- Call budget indicator (Calls used: X / 8) — gentle, top-right.
+- Honest agent labels and "the Analyst is reading the role…" status while a call is in flight.
+- Resume-from-anywhere: re-opening the page picks up the newest in-progress workflow for that role.
+
+**Deferred per spec** (user explicitly OK'd in scope question):
+- **3.2** Outcome-signal attribution — `hire_outcomes` infrastructure exists (Phase E4) and `agent_feedback` collection accepts `outcome_signal` type. The Claude attribution call is not wired yet — pending real candidate outcomes.
+- **3.3** `/admin/agent-metrics` dashboard — `agent_metrics_daily` collection + indexes exist; aggregation job + UI deferred until there's usage.
+- **3.5** Memory hygiene — TTL index on `agent_memories.expires_at` exists; 500-entry-per-(manager,domain) cap + per-agent clear UI deferred.
+
+**Hard cost guardrails (enforced)**
+- 8 Claude calls per workflow max (enforced in `save_step_output`).
+- Per-agent max_tokens enforced.
+- Memory extraction calls capped at 200 tokens (Haiku).
+- Embeddings cached in-process (`_EMBED_CACHE`).
+- No autonomous agent loops — each step requires explicit human action.
+
+**Tested**
+- Backend pytest: 37/38 passing (1 pre-existing flaky `test_response_audio_stream_jwt` unrelated).
+- Live curl: `POST /workflows` returns clean JSON (200 with domain_key `foundry::mid`); `POST /workflows/{id}/run/1` returns expected 503 (`ANTHROPIC_API_KEY not configured`) — confirming the workflow will Just Work once Claude key arrives on Railway; `POST /workflows/{id}/feedback` returns 200 with background extraction queued.
+- Live frontend: `/roles/:id/cases/new-guided` renders the progress strip with 6 steps, "Calls used: 0 / 8" budget, Run Analyst CTA. Page is resume-aware (returns to newest in-progress workflow).
+
 ## Backlog
 ### P0 — needed before Phase 2 sign-off by user
 - (None — Phase 1 acceptance is: signup → wizard → generate → edit → approve. All in place.)

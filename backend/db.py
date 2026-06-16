@@ -46,6 +46,23 @@ async def ensure_indexes() -> None:
     await db.hire_outcomes.create_index([("assignment_id", 1), ("window", 1)], unique=True)
     await db.hire_outcomes.create_index("manager_id")
 
+    # ---------- Agentic workflow substrate (Module 1) ----------
+    # Per-agent learned memory (manager + domain scoped)
+    await db.agent_memories.create_index([("agent_name", 1), ("manager_id", 1), ("domain_key", 1), ("created_at", -1)])
+    await db.agent_memories.create_index("manager_id")
+    await db.agent_memories.create_index([("expires_at", 1)], expireAfterSeconds=0, sparse=True)
+    # Agent feedback log
+    await db.agent_feedback.create_index([("agent_name", 1), ("manager_id", 1), ("created_at", -1)])
+    await db.agent_feedback.create_index("case_id")
+    # Daily metrics
+    await db.agent_metrics_daily.create_index([("agent_name", 1), ("date", -1), ("manager_id", 1)], unique=True)
+    # Knowledge corpus (for Theory Researcher retrieval — separate from agent memory)
+    await db.knowledge_chunks.create_index([("domain_key", 1), ("created_at", -1)])
+    await db.knowledge_chunks.create_index("source_id")
+    # Workflow state (resume-from-anywhere)
+    await db.case_workflow_state.create_index("manager_id")
+    await db.case_workflow_state.create_index([("status", 1), ("updated_at", -1)])
+
 
 def close_client() -> None:
     global _client

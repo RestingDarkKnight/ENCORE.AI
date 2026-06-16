@@ -24,6 +24,7 @@ from routes_share import router as share_router  # noqa: E402
 from routes_stats import router as stats_router  # noqa: E402
 from routes_suggest import router as suggest_router  # noqa: E402
 from routes_take import router as take_router  # noqa: E402
+from routes_workflow import router as workflow_router  # noqa: E402
 from seed import seed_demo_manager  # noqa: E402
 from storage_client import init_storage  # noqa: E402
 
@@ -77,6 +78,7 @@ api.include_router(share_router)
 api.include_router(stats_router)
 api.include_router(suggest_router)
 api.include_router(take_router)
+api.include_router(workflow_router)
 
 app.include_router(api)
 

@@ -218,16 +218,26 @@ export default function RoleDetail() {
           className="w-full bg-transparent border border-black/15 rounded-lg px-4 py-3 focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all resize-none"
         />
 
-        <button
-          type="button"
-          onClick={generate}
-          disabled={generating || !claudeOk || role.archived}
-          data-testid="case-generate-button"
-          className="mt-4 inline-flex items-center gap-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-white rounded-lg px-5 py-2.5 transition-all hover:-translate-y-0.5"
-        >
-          <Sparkle size={16} weight="bold" />
-          <span className="font-medium text-sm">{generating ? "Drafting with Claude…" : role.archived ? "Restore role to generate" : "Generate case study"}</span>
-        </button>
+        <div className="flex items-center gap-2 mt-4 flex-wrap">
+          <button
+            type="button"
+            onClick={generate}
+            disabled={generating || !claudeOk || role.archived}
+            data-testid="case-generate-button"
+            className="inline-flex items-center gap-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-white rounded-lg px-5 py-2.5 transition-all hover:-translate-y-0.5"
+          >
+            <Sparkle size={16} weight="bold" />
+            <span className="font-medium text-sm">{generating ? "Drafting with Claude\u2026" : role.archived ? "Restore role to generate" : "Generate case study"}</span>
+          </button>
+          <Link
+            to={`/roles/${role.id}/cases/new-guided`}
+            data-testid="case-guided-button"
+            className="btn-quiet text-sm"
+            title="Six-agent workflow with memory — slower but with feedback at every step"
+          >
+            <Sparkle size={14} weight="duotone" /> Build guided (6-agent)
+          </Link>
+        </div>
       </section>
 
       {/* Cases list */}
