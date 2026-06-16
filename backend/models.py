@@ -55,6 +55,7 @@ class TokenResponse(BaseModel):
 # ---------- Role ----------
 Seniority = Literal["junior", "mid", "senior", "lead"]
 Difficulty = Literal["foundational", "applied", "advanced", "expert"]
+LanguageRegister = Literal["plain", "standard", "advanced"]
 
 
 class RoleCreate(BaseModel):
@@ -66,6 +67,7 @@ class RoleCreate(BaseModel):
     success_criteria: str = Field(default="", max_length=2000)
     common_challenges: str = Field(default="", max_length=2000)
     difficulty_level: Difficulty = "applied"
+    language_register: LanguageRegister = "standard"
 
 
 class RoleUpdate(BaseModel):
@@ -77,6 +79,7 @@ class RoleUpdate(BaseModel):
     success_criteria: Optional[str] = None
     common_challenges: Optional[str] = None
     difficulty_level: Optional[Difficulty] = None
+    language_register: Optional[LanguageRegister] = None
 
 
 class Role(RoleCreate):

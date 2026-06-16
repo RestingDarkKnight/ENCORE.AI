@@ -7,6 +7,7 @@ import os
 from typing import Any, Dict, List
 
 from claude_service import call_claude_json
+from language_register import EVALUATOR_FAIRNESS_CLAUSE
 from models import CriterionScore, EvaluationDraft
 
 logger = logging.getLogger(__name__)
@@ -97,11 +98,13 @@ def eval_model_name() -> str:
 async def evaluate_response(case: dict, response: dict) -> EvaluationDraft:
     """Call Claude to evaluate. Raises on failure (caller catches)."""
     user_prompt = (
+        f"{EVALUATOR_FAIRNESS_CLAUSE}\n\n"
         f"CASE TITLE: {case['title']}\n\n"
         f"CASE SCENARIO:\n{case['scenario_text']}\n\n"
         f"RUBRIC:\n{_rubric_payload(case)}\n\n"
         f"CANDIDATE'S WORK:\n{_candidate_answers_payload(case, response)}\n\n"
         "Score each rubric dimension honestly using its anchors, with a verbatim quote per score. "
+        "Score reasoning and substance only — never the candidate's English. "
         "Return JSON only matching the schema."
     )
 

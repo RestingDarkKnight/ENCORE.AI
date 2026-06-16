@@ -46,6 +46,7 @@ const STEPS = [
   "Soft skills",
   "Success & challenges",
   "Difficulty level",
+  "Language register",
 ];
 
 export default function CreateRole() {
@@ -63,6 +64,7 @@ export default function CreateRole() {
     success_criteria: "",
     common_challenges: "",
     difficulty_level: "applied",
+    language_register: "standard",
   });
   const [techInput, setTechInput] = useState("");
   const [softInput, setSoftInput] = useState("");
@@ -84,7 +86,8 @@ export default function CreateRole() {
     (step === 2) ||
     (step === 3) ||
     (step === 4) ||
-    (step === 5);
+    (step === 5) ||
+    (step === 6);
 
   const onSubmit = async () => {
     setBusy(true);
@@ -405,6 +408,36 @@ export default function CreateRole() {
                     <div className={`text-xs mt-1 ${form.difficulty_level === d.id ? "text-white/70" : "text-ink-soft"}`}>{d.desc}</div>
                   </button>
                 ))}
+              </div>
+            )}
+
+            {step === 6 && (
+              <div className="space-y-3" data-testid="step-language-register">
+                <p className="text-sm text-ink-soft -mt-2">Pick by reading the sample. This is how ENCORE will write the case &mdash; not how candidates will be judged.</p>
+                {LANGUAGE_REGISTERS.map((r) => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => setField("language_register", r.id)}
+                    data-testid={`step-register-${r.id}`}
+                    className={`w-full text-left p-4 rounded-lg border transition-all ${
+                      form.language_register === r.id
+                        ? "bg-brand text-white border-brand"
+                        : "bg-transparent border-black/15 hover:border-black/30 hover:bg-black/[0.02]"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="font-display font-bold">{r.label}</div>
+                      {form.language_register === r.id && <CheckCircle weight="fill" size={18} />}
+                    </div>
+                    <p className={`mt-2 italic leading-relaxed text-sm ${form.language_register === r.id ? "text-white/80" : "text-ink"}`}>
+                      &ldquo;{r.sample}&rdquo;
+                    </p>
+                  </button>
+                ))}
+                <p className="text-xs text-ink-soft pt-1" data-testid="register-trust-line">
+                  This controls how ENCORE writes the case &mdash; not how candidates are judged. Candidates are never scored on their English; only on their reasoning.
+                </p>
               </div>
             )}
           </motion.div>

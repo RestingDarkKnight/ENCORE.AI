@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from claude_service import call_claude_json, has_api_key, smoke_test
 from db import get_db
+from language_register import register_block
 from models import (
     Case,
     CaseGenerateRequest,
@@ -118,6 +119,7 @@ async def generate_case(payload: CaseGenerateRequest, manager: ManagerPublic = D
         "Design a work-simulation case study for the role described below.\n\n"
         f"{_role_brief(role)}\n"
         f"Additional notes from the hiring manager: {payload.notes or 'none'}\n\n"
+        f"{register_block(role.get('language_register'), label='writing this case')}\n\n"
         "Return JSON only, matching the schema in the system message."
     )
 
@@ -166,6 +168,7 @@ async def regenerate_case(case_id: str, manager: ManagerPublic = Depends(current
     user_prompt = (
         "Regenerate a fresh work-simulation case for the role below. Produce a noticeably different scenario from any previous draft.\n\n"
         f"{_role_brief(role)}\n"
+        f"{register_block(role.get('language_register'), label='writing this case')}\n\n"
         "Return JSON only."
     )
     try:
@@ -212,6 +215,7 @@ async def regenerate_section(
     if not target:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Section not found")
 
+    role_doc = await get_db().roles.find_one({"id": existing["role_id"]}, {"language_register": 1})
     user_prompt = (
         "Regenerate the section below for an existing case study. Keep it consistent with the case scenario.\n\n"
         f"CASE TITLE: {existing['title']}\n"
@@ -219,6 +223,7 @@ async def regenerate_section(
         f"SECTION TO REPLACE — title: {target['title']}\n"
         f"SECTION TO REPLACE — current intro: {target['intro']}\n"
         f"Manager notes: {payload.notes or 'none'}\n\n"
+        f"{register_block((role_doc or {}).get('language_register'), label='writing this section')}\n\n"
         "Return JSON only matching the section schema."
     )
 

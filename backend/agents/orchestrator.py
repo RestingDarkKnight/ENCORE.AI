@@ -152,13 +152,21 @@ def _build_task(*, agent_name: str, role: Dict[str, Any], workflow: Dict[str, An
         "industry": role.get("industry"),
         "seniority": role.get("seniority"),
         "difficulty_level": role.get("difficulty_level"),
+        "language_register": role.get("language_register") or "standard",
         "technical_skills": role.get("technical_skills"),
         "soft_skills": role.get("soft_skills"),
         "success_criteria": role.get("success_criteria"),
         "common_challenges": role.get("common_challenges"),
     }, indent=2, ensure_ascii=False)
 
+    # Inject language-register guidance for agents that produce candidate-facing text
+    from language_register import register_block as _register_block  # noqa: PLC0415
+    register_hint = ""
+    if agent_name in ("generator", "polisher", "architect"):
+        register_hint = "\n\n" + _register_block(role.get("language_register"), label="writing this case")
+
     base_tail = f"\n\nUSER INPUT (optional):\n{user_input}" if user_input else ""
+    base_tail = register_hint + base_tail
 
     if agent_name == "analyst":
         return ("Read the role record below and produce your structured role interpretation.\n\n"
