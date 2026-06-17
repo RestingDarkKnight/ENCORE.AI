@@ -196,6 +196,24 @@ A hiring manager describes a role; ENCORE uses Claude to generate a tailored cas
 - **3.3** `/admin/agent-metrics` dashboard — `agent_metrics_daily` collection + indexes exist; aggregation job + UI deferred until there's usage.
 - **3.5** Memory hygiene — TTL index on `agent_memories.expires_at` exists; 500-entry-per-(manager,domain) cap + per-agent clear UI deferred.
 
+### Phase H — Assessment Modes & Grading (in flight)
+
+**Slice 1 ✅ — Language Register (2026-02-15)**
+- Three registers: `plain | standard | advanced` selectable in role wizard; persisted on `Role`.
+- Generator/Polisher/Section-regen all receive a register block; Evaluator gets a fairness clause (NEVER score candidate English).
+
+**Slice 2 ✅ — Assessment Modes + Reasoning Preview (2026-02-17)**
+- Three modes: `screening | takehome | interview`. Stored on `Case` and on `case_workflow_state` doc.
+- Manager picks mode + an optional "Require reasoning on objective questions" toggle on RoleDetail (one selector drives both one-shot and 6-agent flows).
+- Mode block injected into Architect/Generator/Critic/Polisher prompts; reasoning clause appends a "Why? (1–2 sentences)" requirement for objective question types (Slice 3 will introduce the formal types).
+- GuidedCase shows a mode badge + reasoning badge in the header; URL params (`?mode=...&reasoning=1`) seed a fresh workflow, but an existing in-progress workflow always takes precedence.
+- Legacy workflow docs without the new fields are read with safe defaults (`interview` / false).
+- Test coverage: 11/11 new pytest cases passing (`backend/tests/test_phase_h_slice2.py`); frontend Playwright flow (mode toggle, reasoning toggle, fresh + resume scenarios) passing in iteration_8.
+
+**Slice 3 (P0) — pending**: 6 formal question types (`mcq`, `multiple_correct`, `fill_blank`, `match`, `short_answer`, `open`) + deterministic scoring engine for the objective ones. The `require_reasoning` boolean and `assessment_mode` literal are already on `Case` and ready to drive Slice 3 logic.
+
+**Slice 4 (P0) — pending**: Grading system — human-in-the-loop review gate, identity-blind LLM evaluation with quoted evidence, transparent candidate-facing feedback.
+
 **Hard cost guardrails (enforced)**
 - 8 Claude calls per workflow max (enforced in `save_step_output`).
 - Per-agent max_tokens enforced.

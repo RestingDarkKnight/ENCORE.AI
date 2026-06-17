@@ -54,13 +54,19 @@ async def get_workflow(workflow_id: str, manager_id: str) -> Dict[str, Any]:
     d = await get_db().case_workflow_state.find_one({"id": workflow_id, "manager_id": manager_id})
     if not d:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Workflow not found")
-    return doc_strip(d)
+    d = doc_strip(d)
+    d.setdefault("assessment_mode", "interview")
+    d.setdefault("require_reasoning", False)
+    return d
 
 
 async def list_workflows_for_role(role_id: str, manager_id: str) -> List[Dict[str, Any]]:
     out = []
     async for d in get_db().case_workflow_state.find({"role_id": role_id, "manager_id": manager_id}).sort("updated_at", -1):
-        out.append(doc_strip(d))
+        d = doc_strip(d)
+        d.setdefault("assessment_mode", "interview")
+        d.setdefault("require_reasoning", False)
+        out.append(d)
     return out
 
 
