@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from claude_service import call_claude_json, has_api_key, smoke_test
 from db import get_db
 from language_register import register_block
+from assessment_mode import generator_mode_block, require_reasoning_block
 from models import (
     Case,
     CaseGenerateRequest,
@@ -119,6 +120,8 @@ async def generate_case(payload: CaseGenerateRequest, manager: ManagerPublic = D
         "Design a work-simulation case study for the role described below.\n\n"
         f"{_role_brief(role)}\n"
         f"Additional notes from the hiring manager: {payload.notes or 'none'}\n\n"
+        f"{generator_mode_block(payload.assessment_mode)}\n\n"
+        f"{require_reasoning_block(payload.require_reasoning)}\n\n"
         f"{register_block(role.get('language_register'), label='writing this case')}\n\n"
         "Return JSON only, matching the schema in the system message."
     )
@@ -143,6 +146,9 @@ async def generate_case(payload: CaseGenerateRequest, manager: ManagerPublic = D
         sections=draft.sections,
         rubric=draft.rubric,
         estimated_minutes=draft.estimated_minutes,
+        assessment_mode=payload.assessment_mode,
+        require_reasoning=payload.require_reasoning,
+        language_register=role.get("language_register"),
         model_used=os.environ.get("CLAUDE_MODEL", "claude-opus-4-8"),
         model_version=os.environ.get("CLAUDE_MODEL", "claude-opus-4-8"),
     )

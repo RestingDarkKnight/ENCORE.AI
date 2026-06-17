@@ -39,6 +39,8 @@ HAIKU_MODEL = os.environ.get("CLAUDE_HAIKU_MODEL", "claude-haiku-4-5")
 class WorkflowStartRequest(BaseModel):
     role_id: str
     jd_text: Optional[str] = None
+    assessment_mode: Optional[str] = "interview"
+    require_reasoning: Optional[bool] = False
 
 
 class RunStepRequest(BaseModel):
@@ -63,7 +65,16 @@ async def start_workflow(payload: WorkflowStartRequest, manager: ManagerPublic =
     if not role:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Role not found")
     domain_key = normalize_domain_key(role.get("industry"), role.get("seniority"))
-    wf = await create_workflow(manager_id=manager.id, role_id=payload.role_id, domain_key=domain_key)
+    mode = (payload.assessment_mode or "interview").lower()
+    if mode not in ("screening", "takehome", "interview"):
+        mode = "interview"
+    wf = await create_workflow(
+        manager_id=manager.id,
+        role_id=payload.role_id,
+        domain_key=domain_key,
+        assessment_mode=mode,
+        require_reasoning=bool(payload.require_reasoning),
+    )
     return wf
 
 
@@ -220,6 +231,9 @@ async def finalize_workflow(workflow_id: str, manager: ManagerPublic = Depends(c
         "sections": final.get("sections") or [],
         "rubric": final.get("rubric") or [],
         "estimated_minutes": final.get("estimated_minutes") or 60,
+        "assessment_mode": wf.get("assessment_mode") or "interview",
+        "require_reasoning": bool(wf.get("require_reasoning")),
+        "language_register": role.get("language_register"),
         "created_at": now,
         "updated_at": now,
         "approved_at": None,

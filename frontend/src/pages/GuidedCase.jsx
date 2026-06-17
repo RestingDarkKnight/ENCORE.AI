@@ -6,7 +6,7 @@
 // honest agent labels, feedback routing on every action.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
 import {
@@ -25,13 +25,20 @@ const STEPS = [
   { n: 6, key: "polisher",          label: "Polisher",           verb: "applying revisions",               icon: Sparkle },
 ];
 
+const MODE_LABEL = { screening: "Screening", takehome: "Take-home", interview: "Interview" };
+
 export default function GuidedCase() {
   const { roleId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [role, setRole] = useState(null);
   const [wf, setWf] = useState(null);
   const [busy, setBusy] = useState(false);
   const [activeStep, setActiveStep] = useState(1);
+
+  // Read assessment mode + require_reasoning from URL (set by RoleDetail's mode selector).
+  const startMode = (searchParams.get("mode") || "interview").toLowerCase();
+  const startReasoning = searchParams.get("reasoning") === "1";
 
   // Load role + start (or resume) workflow
   useEffect(() => {
@@ -45,12 +52,17 @@ export default function GuidedCase() {
         setWf(open);
         setActiveStep(open.current_step || 1);
       } else {
-        const fresh = await api.post(`/workflows`, { role_id: roleId });
+        const validMode = ["screening", "takehome", "interview"].includes(startMode) ? startMode : "interview";
+        const fresh = await api.post(`/workflows`, {
+          role_id: roleId,
+          assessment_mode: validMode,
+          require_reasoning: startReasoning,
+        });
         setWf(fresh.data);
         setActiveStep(1);
       }
     })().catch((e) => toast.error(e?.response?.data?.detail || "Failed to start workflow."));
-  }, [roleId]);
+  }, [roleId, startMode, startReasoning]);
 
   const runStep = useCallback(async (step, body = {}) => {
     setBusy(true);
@@ -98,8 +110,28 @@ export default function GuidedCase() {
         <Link to={`/roles/${roleId}`} className="inline-flex items-center gap-1.5 text-sm text-ink-soft hover:text-ink" data-testid="guided-back">
           <ArrowLeft size={14} /> Back to role
         </Link>
-        <div className="text-xs text-ink-soft tabular-nums" data-testid="guided-call-budget">
-          Calls used: <strong className="text-ink">{wf.call_count || 0}</strong> / 8
+        <div className="flex items-center gap-3 flex-wrap">
+          {wf.assessment_mode && (
+            <span
+              data-testid="guided-mode-badge"
+              className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider border border-brand/30 bg-brand/[0.05] text-brand rounded-full px-2 py-0.5"
+              title={`Assessment mode: ${MODE_LABEL[wf.assessment_mode] || wf.assessment_mode}`}
+            >
+              Mode: {MODE_LABEL[wf.assessment_mode] || wf.assessment_mode}
+            </span>
+          )}
+          {wf.require_reasoning && (
+            <span
+              data-testid="guided-reasoning-badge"
+              className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider border border-brand-sand/30 bg-brand-sand/[0.08] text-brand-sand rounded-full px-2 py-0.5"
+              title="Reasoning required on objective questions"
+            >
+              + Reasoning
+            </span>
+          )}
+          <div className="text-xs text-ink-soft tabular-nums" data-testid="guided-call-budget">
+            Calls used: <strong className="text-ink">{wf.call_count || 0}</strong> / 8
+          </div>
         </div>
       </header>
 

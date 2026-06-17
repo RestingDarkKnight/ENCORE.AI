@@ -25,6 +25,8 @@ export default function RoleDetail() {
   const [generating, setGenerating] = useState(false);
   const [claudeOk, setClaudeOk] = useState(false);
   const [notes, setNotes] = useState("");
+  const [assessmentMode, setAssessmentMode] = useState("interview");
+  const [requireReasoning, setRequireReasoning] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -77,7 +79,12 @@ export default function RoleDetail() {
   const generate = async () => {
     setGenerating(true);
     try {
-      const { data } = await api.post("/cases/generate", { role_id: roleId, notes });
+      const { data } = await api.post("/cases/generate", {
+        role_id: roleId,
+        notes,
+        assessment_mode: assessmentMode,
+        require_reasoning: requireReasoning,
+      });
       setCases((cs) => [data, ...cs]);
       toast.success("Case study drafted.");
       setNotes("");
@@ -208,6 +215,14 @@ export default function RoleDetail() {
           </div>
         )}
 
+        <ModeSelector
+          mode={assessmentMode}
+          setMode={setAssessmentMode}
+          requireReasoning={requireReasoning}
+          setRequireReasoning={setRequireReasoning}
+          disabled={generating || role.archived}
+        />
+
         <label className="block text-sm font-medium text-ink-soft mb-1.5">Optional notes for the model</label>
         <textarea
           value={notes}
@@ -230,7 +245,7 @@ export default function RoleDetail() {
             <span className="font-medium text-sm">{generating ? "Drafting with Claude\u2026" : role.archived ? "Restore role to generate" : "Generate case study"}</span>
           </button>
           <Link
-            to={`/roles/${role.id}/cases/new-guided`}
+            to={`/roles/${role.id}/cases/new-guided?mode=${assessmentMode}${requireReasoning ? "&reasoning=1" : ""}`}
             data-testid="case-guided-button"
             className="btn-quiet text-sm"
             title="Six-agent workflow with memory — slower but with feedback at every step"
@@ -276,6 +291,81 @@ export default function RoleDetail() {
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+// ModeSelector — Phase H Slice 2. Three assessment modes + a "require reasoning"
+// toggle that conditions the generator's prompt. Lives on RoleDetail above the
+// generate-button row, so both one-shot and 6-agent flows pick it up.
+const MODE_OPTIONS = [
+  {
+    key: "screening",
+    label: "Screening",
+    blurb: "High-volume first cut. Fast, gaming-resistant, comparable across many candidates.",
+    eta: "~30–45 min",
+  },
+  {
+    key: "takehome",
+    label: "Take-home",
+    blurb: "Mid-funnel async work. Mix of objective + reasoning + open questions.",
+    eta: "~90–180 min",
+  },
+  {
+    key: "interview",
+    label: "Interview",
+    blurb: "Late-funnel open scenario for back-and-forth conversation; voice-recordable.",
+    eta: "~45–60 min",
+  },
+];
+
+function ModeSelector({ mode, setMode, requireReasoning, setRequireReasoning, disabled }) {
+  return (
+    <div className="mb-5" data-testid="mode-selector">
+      <p className="encore-overline mb-2">Assessment mode</p>
+      <div className="grid sm:grid-cols-3 gap-2">
+        {MODE_OPTIONS.map((opt) => {
+          const active = mode === opt.key;
+          return (
+            <button
+              key={opt.key}
+              type="button"
+              onClick={() => setMode(opt.key)}
+              disabled={disabled}
+              data-testid={`mode-option-${opt.key}`}
+              data-state={active ? "active" : "inactive"}
+              className={`text-left rounded-xl border px-3 py-3 transition-all ${
+                active
+                  ? "border-brand bg-brand/[0.04] shadow-sm ring-2 ring-brand/15"
+                  : "border-black/10 bg-white hover:border-black/20 hover:bg-black/[0.02]"
+              } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+            >
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className={`text-sm font-semibold ${active ? "text-brand" : "text-ink"}`}>{opt.label}</span>
+                <span className="text-[10px] text-ink-soft tabular-nums">{opt.eta}</span>
+              </div>
+              <p className="text-[11px] text-ink-soft leading-snug">{opt.blurb}</p>
+            </button>
+          );
+        })}
+      </div>
+      <label
+        className={`mt-3 inline-flex items-start gap-2 text-xs ${disabled ? "opacity-50" : "cursor-pointer"}`}
+        data-testid="require-reasoning-row"
+      >
+        <input
+          type="checkbox"
+          checked={requireReasoning}
+          onChange={(e) => setRequireReasoning(e.target.checked)}
+          disabled={disabled}
+          data-testid="require-reasoning-toggle"
+          className="mt-0.5 h-3.5 w-3.5 rounded border-black/20 text-brand focus:ring-brand/20"
+        />
+        <span className="text-ink-soft leading-snug">
+          <strong className="text-ink">Require reasoning on objective questions.</strong> Every MCQ / fill-blank / match item gets a short
+          &ldquo;Why? (1–2 sentences)&rdquo; follow-up so we capture judgement, not lucky guesses.
+        </span>
+      </label>
     </div>
   );
 }

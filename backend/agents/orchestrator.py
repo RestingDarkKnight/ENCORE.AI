@@ -161,12 +161,39 @@ def _build_task(*, agent_name: str, role: Dict[str, Any], workflow: Dict[str, An
 
     # Inject language-register guidance for agents that produce candidate-facing text
     from language_register import register_block as _register_block  # noqa: PLC0415
+    from assessment_mode import (  # noqa: PLC0415
+        generator_mode_block as _gen_mode,
+        architect_mode_block as _arch_mode,
+        critic_mode_block as _critic_mode,
+        require_reasoning_block as _req_reasoning,
+    )
+
+    mode = workflow.get("assessment_mode") or "interview"
+    require_reasoning = bool(workflow.get("require_reasoning"))
+
     register_hint = ""
     if agent_name in ("generator", "polisher", "architect"):
         register_hint = "\n\n" + _register_block(role.get("language_register"), label="writing this case")
 
+    mode_hint = ""
+    if agent_name == "architect":
+        mode_hint = "\n\n" + _arch_mode(mode)
+    elif agent_name == "generator":
+        mode_hint = "\n\n" + _gen_mode(mode)
+        rr = _req_reasoning(require_reasoning)
+        if rr:
+            mode_hint += "\n\n" + rr
+    elif agent_name == "critic":
+        mode_hint = "\n\n=== Mode-specific critic checks ===\n" + _critic_mode(mode)
+    elif agent_name == "polisher":
+        # Polisher must respect the same mode rules when it rewrites.
+        mode_hint = "\n\n" + _gen_mode(mode)
+        rr = _req_reasoning(require_reasoning)
+        if rr:
+            mode_hint += "\n\n" + rr
+
     base_tail = f"\n\nUSER INPUT (optional):\n{user_input}" if user_input else ""
-    base_tail = register_hint + base_tail
+    base_tail = mode_hint + register_hint + base_tail
 
     if agent_name == "analyst":
         return ("Read the role record below and produce your structured role interpretation.\n\n"

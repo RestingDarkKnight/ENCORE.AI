@@ -27,13 +27,15 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-async def create_workflow(*, manager_id: str, role_id: str, domain_key: str) -> Dict[str, Any]:
+async def create_workflow(*, manager_id: str, role_id: str, domain_key: str, assessment_mode: str = "interview", require_reasoning: bool = False) -> Dict[str, Any]:
     doc = {
         "id": str(uuid.uuid4()),
         "case_id": None,
         "manager_id": manager_id,
         "role_id": role_id,
         "domain_key": domain_key,
+        "assessment_mode": assessment_mode,
+        "require_reasoning": require_reasoning,
         "status": "in_progress",
         "current_step": 1,
         "step_outputs": {},   # keyed by step number 1..6

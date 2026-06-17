@@ -126,6 +126,9 @@ ReviewStatus = Literal["pending_review", "approved", "rejected"]
 ReviewStatus = Literal["pending_review", "approved", "rejected"]
 
 
+AssessmentMode = Literal["screening", "takehome", "interview"]
+
+
 class Case(BaseModel):
     id: str = Field(default_factory=_new_id)
     role_id: str
@@ -136,6 +139,9 @@ class Case(BaseModel):
     sections: List[CaseSection]
     rubric: List[RubricDimension]
     estimated_minutes: int = 60
+    assessment_mode: AssessmentMode = "interview"
+    require_reasoning: bool = False
+    language_register: Optional[Literal["plain", "standard", "advanced"]] = None
     model_used: Optional[str] = None
     model_version: Optional[str] = None
     created_at: str = Field(default_factory=_now_iso)
@@ -212,6 +218,8 @@ class SMEInviteCreate(BaseModel):
 class CaseGenerateRequest(BaseModel):
     role_id: str
     notes: str = Field(default="", max_length=2000)
+    assessment_mode: AssessmentMode = "interview"
+    require_reasoning: bool = False
 
 
 class CaseUpdateRequest(BaseModel):
