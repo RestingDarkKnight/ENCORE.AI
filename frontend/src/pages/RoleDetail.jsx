@@ -125,7 +125,7 @@ export default function RoleDetail() {
       )}
 
       <header>
-        <p className="encore-overline mb-2">{role.seniority} · {role.industry || "—"} · {DIFFICULTY_LABEL[role.difficulty_level]}</p>
+        <p className="encore-overline mb-2">{role.seniority} · {role.industry || "—"} · {DIFFICULTY_LABEL[role.difficulty_level]} · <span className="text-brand-sand">register: {role.language_register || "standard"}</span></p>
         <EditableField
           value={role.job_title}
           onSave={(v) => patchRole({ job_title: v })}

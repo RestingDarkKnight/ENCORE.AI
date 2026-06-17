@@ -20,6 +20,27 @@ const DIFFICULTY = [
   { id: "expert", label: "Expert", desc: "Reframe the problem; make strategic, cross-team calls." },
 ];
 
+const LANGUAGE_REGISTERS = [
+  {
+    id: "plain",
+    label: "Plain & direct",
+    sample:
+      "A part is failing inspection. It started during the monsoon. Some weeks are fine, some weeks one in three parts is rejected. You are the new engineer. Your job is to find out why and fix it. You have three hours and you can talk to anyone on the floor.",
+  },
+  {
+    id: "standard",
+    label: "Standard professional (default)",
+    sample:
+      "A precision-cast component has begun failing X-ray inspection for subsurface porosity, with rejection rates that fluctuate week to week since the start of the monsoon. As the newly appointed process engineer, you have been asked to investigate the cause and recommend a fix within three hours, with full access to the shop floor and records.",
+  },
+  {
+    id: "advanced",
+    label: "Advanced",
+    sample:
+      "A flight-critical casting has developed an intermittent subsurface porosity defect whose incidence — fluctuating sharply with no immediately discernible pattern since monsoon onset — has begun to threaten both yield and delivery commitments. You have inherited the investigation, and must, within three hours, disentangle the contributing factors and commit to a defensible remediation.",
+  },
+];
+
 const SUGGESTED_TECH = {
   default: ["systems thinking", "code review", "debugging", "data analysis"],
   engineer: ["distributed systems", "API design", "databases", "observability"],
