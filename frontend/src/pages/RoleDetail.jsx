@@ -1,13 +1,20 @@
+// RoleDetail.jsx — single unified page for role + case-design + drafted cases.
+// The one-shot Claude generation is retired; the only path is the inline
+// 6-agent workspace (GuidedWorkflow) which renders below the design card
+// once the manager picks a mode, time, and (optional) notes.
+
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import {
   ArrowLeft, Sparkle, FileText, Warning, ArrowRight, CheckCircle, Clock,
-  Archive, ArrowCounterClockwise, PencilSimple,
+  Archive, ArrowCounterClockwise, PencilSimple, CaretDown, CaretUp,
 } from "@phosphor-icons/react";
 import KebabMenu from "@/components/KebabMenu";
-import GenerationTicker from "@/components/GenerationTicker";
+import ModeTimeSelector from "@/components/ModeTimeSelector";
+import GuidedWorkflow from "@/components/GuidedWorkflow";
 
 const DIFFICULTY_LABEL = {
   foundational: "Foundational",
@@ -16,17 +23,23 @@ const DIFFICULTY_LABEL = {
   expert: "Expert",
 };
 
+const MODE_LABEL = { screening: "Screening", takehome: "Take-home", interview: "Interview" };
+
 export default function RoleDetail() {
   const { roleId } = useParams();
   const navigate = useNavigate();
   const [role, setRole] = useState(null);
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
   const [claudeOk, setClaudeOk] = useState(false);
-  const [notes, setNotes] = useState("");
-  const [assessmentMode, setAssessmentMode] = useState("interview");
+
+  // Design-card state
+  const [assessmentMode, setAssessmentMode] = useState(null);
+  const [minutes, setMinutes] = useState(null);
   const [requireReasoning, setRequireReasoning] = useState(false);
+  const [notes, setNotes] = useState("");
+  const [designOpen, setDesignOpen] = useState(false); // when true, inline workflow renders
+  const [expandedCaseId, setExpandedCaseId] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -44,6 +57,24 @@ export default function RoleDetail() {
   }, [roleId]);
 
   useEffect(() => { load(); }, [load]);
+
+  // If there's already an in-progress workflow for this role, surface the
+  // design card pre-opened so the manager resumes seamlessly.
+  useEffect(() => {
+    if (!role?.id) return;
+    api.get(`/workflows/by-role/${role.id}`)
+      .then((res) => {
+        const open = (res.data || []).find((w) => w.status === "in_progress");
+        if (open) {
+          setDesignOpen(true);
+          if (open.assessment_mode) setAssessmentMode(open.assessment_mode);
+          if (open.estimated_minutes) setMinutes(open.estimated_minutes);
+          if (typeof open.require_reasoning === "boolean") setRequireReasoning(open.require_reasoning);
+          if (open.notes) setNotes(open.notes);
+        }
+      })
+      .catch(() => { /* fail-soft */ });
+  }, [role?.id]);
 
   const patchRole = async (updates) => {
     try {
@@ -76,26 +107,38 @@ export default function RoleDetail() {
     }
   };
 
-  const generate = async () => {
-    setGenerating(true);
-    try {
-      const { data } = await api.post("/cases/generate", {
-        role_id: roleId,
-        notes,
-        assessment_mode: assessmentMode,
-        require_reasoning: requireReasoning,
-      });
-      setCases((cs) => [data, ...cs]);
-      toast.success("Case study drafted.");
-      setNotes("");
-    } catch (err) {
-      toast.error(err?.response?.data?.detail || "Generation failed.");
-    } finally {
-      setGenerating(false);
-    }
+  const canBegin = !!assessmentMode && !!minutes && !role?.archived && claudeOk;
+
+  const onCaseFinalized = async (newCaseId) => {
+    // Re-pull cases, collapse the workspace, optionally expand the new card.
+    const c = await api.get(`/cases/role/${roleId}`, { params: { include_archived: false } });
+    setCases(c.data);
+    setDesignOpen(false);
+    setExpandedCaseId(newCaseId);
+    setAssessmentMode(null);
+    setMinutes(null);
+    setRequireReasoning(false);
+    setNotes("");
+    toast.success("Case study ready in drafted cases.");
   };
 
-  if (loading) return <div className="text-center text-ink-soft py-16">Loading role…</div>;
+  const reviseCase = (c) => {
+    // "Revise via agents" — pre-fills the design card with this case's mode/time
+    // and re-opens the workspace. A fresh workflow is started (current MVP).
+    setAssessmentMode(c.assessment_mode || "interview");
+    setMinutes(c.estimated_minutes || null);
+    setRequireReasoning(!!c.require_reasoning);
+    setNotes("");
+    setDesignOpen(true);
+    setExpandedCaseId(null);
+    // Smooth-scroll the design card into view
+    setTimeout(() => {
+      const el = document.querySelector('[data-testid="design-card"]');
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+  };
+
+  if (loading) return <div className="text-center text-ink-soft py-16">Loading role&hellip;</div>;
   if (!role) return <div className="text-center text-ink-soft py-16">Role not found.</div>;
 
   return (
@@ -132,7 +175,7 @@ export default function RoleDetail() {
       )}
 
       <header>
-        <p className="encore-overline mb-2">{role.seniority} · {role.industry || "—"} · {DIFFICULTY_LABEL[role.difficulty_level]} · <span className="text-brand-sand">register: {role.language_register || "standard"}</span></p>
+        <p className="encore-overline mb-2">{role.seniority} &middot; {role.industry || "—"} &middot; {DIFFICULTY_LABEL[role.difficulty_level]} &middot; <span className="text-brand-sand">register: {role.language_register || "standard"}</span></p>
         <EditableField
           value={role.job_title}
           onSave={(v) => patchRole({ job_title: v })}
@@ -188,72 +231,102 @@ export default function RoleDetail() {
         )}
       </header>
 
-      {/* Case generation */}
-      <section className={`encore-card p-7 ${generating ? "encore-tracing-beam" : ""}`} data-testid="case-generate-card">
+      {/* Design card */}
+      <section className="encore-card p-7" data-testid="design-card">
         <div className="flex items-start gap-4 mb-5">
           <div className="h-10 w-10 rounded-md bg-brand-sand/10 text-brand-sand flex items-center justify-center shrink-0">
             <Sparkle weight="duotone" size={20} />
           </div>
           <div>
-            <h2 className="font-display text-xl font-bold tracking-tight">Generate case study with Claude</h2>
+            <h2 className="font-display text-xl font-bold tracking-tight">Let&rsquo;s design a work-simulation case.</h2>
             <p className="text-sm text-ink-soft mt-1">
-              {generating
-                ? "Hang tight — the heavy lifting is happening server-side."
-                : "Claude drafts a sectioned work-simulation case with a weighted rubric. ~30\u201360 seconds."}
+              Six agents will collaborate &mdash; Analyst, Theory Researcher, Architect, Generator, Critic, Polisher.
+              You approve every step. Pick the funnel stage and a target duration to begin.
             </p>
           </div>
         </div>
-
-        <GenerationTicker active={generating} />
 
         {!claudeOk && (
           <div className="flex items-start gap-3 bg-signal-warning/5 border border-signal-warning/20 rounded-lg p-4 mb-5" data-testid="claude-not-configured-warning">
             <Warning weight="fill" size={18} className="text-signal-warning shrink-0 mt-0.5" />
             <p className="text-sm text-ink">
-              Claude isn&rsquo;t configured yet. Add <code className="font-mono text-xs px-1 py-0.5 bg-black/[0.04] rounded">ANTHROPIC_API_KEY</code> to the backend env and restart to enable generation.
+              Claude isn&rsquo;t configured yet. Add <code className="font-mono text-xs px-1 py-0.5 bg-black/[0.04] rounded">ANTHROPIC_API_KEY</code> to the backend env and restart to enable the workflow.
             </p>
           </div>
         )}
 
-        <ModeSelector
+        <ModeTimeSelector
           mode={assessmentMode}
           setMode={setAssessmentMode}
+          minutes={minutes}
+          setMinutes={setMinutes}
           requireReasoning={requireReasoning}
           setRequireReasoning={setRequireReasoning}
-          disabled={generating || role.archived}
+          disabled={role.archived || designOpen}
         />
 
-        <label className="block text-sm font-medium text-ink-soft mb-1.5">Optional notes for the model</label>
+        <label className="block text-sm font-medium text-ink-soft mb-1.5">Optional notes for the agents</label>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={3}
           placeholder="e.g. emphasize trade-off reasoning around eventual consistency"
-          data-testid="case-generate-notes-input"
-          className="w-full bg-transparent border border-black/15 rounded-lg px-4 py-3 focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all resize-none"
+          disabled={designOpen}
+          data-testid="design-notes-input"
+          className="w-full bg-transparent border border-black/15 rounded-lg px-4 py-3 focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all resize-none disabled:opacity-60"
         />
 
-        <div className="flex items-center gap-2 mt-4 flex-wrap">
-          <button
-            type="button"
-            onClick={generate}
-            disabled={generating || !claudeOk || role.archived}
-            data-testid="case-generate-button"
-            className="inline-flex items-center gap-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-white rounded-lg px-5 py-2.5 transition-all hover:-translate-y-0.5"
-          >
-            <Sparkle size={16} weight="bold" />
-            <span className="font-medium text-sm">{generating ? "Drafting with Claude\u2026" : role.archived ? "Restore role to generate" : "Generate case study"}</span>
-          </button>
-          <Link
-            to={`/roles/${role.id}/cases/new-guided?mode=${assessmentMode}${requireReasoning ? "&reasoning=1" : ""}`}
-            data-testid="case-guided-button"
-            className="btn-quiet text-sm"
-            title="Six-agent workflow with memory — slower but with feedback at every step"
-          >
-            <Sparkle size={14} weight="duotone" /> Build guided (6-agent)
-          </Link>
+        <div className="flex items-center justify-between gap-2 mt-4 flex-wrap">
+          <p className="text-xs text-ink-soft">
+            {assessmentMode
+              ? <>Selected: <strong className="text-ink">{MODE_LABEL[assessmentMode]}</strong>{minutes ? <> · <strong className="text-ink tabular-nums">{minutes} min</strong></> : <> · <em>pick a duration above</em></>}{requireReasoning ? " · + reasoning" : ""}</>
+              : "Pick a mode to get started."}
+          </p>
+          {!designOpen ? (
+            <button
+              type="button"
+              onClick={() => setDesignOpen(true)}
+              disabled={!canBegin}
+              data-testid="design-begin-button"
+              className="inline-flex items-center gap-2 bg-ink hover:bg-ink/85 disabled:opacity-40 disabled:cursor-not-allowed text-canvas rounded-lg px-5 py-2.5 transition-all hover:-translate-y-0.5"
+            >
+              <Sparkle size={16} weight="bold" />
+              <span className="font-medium text-sm">Begin with the Analyst</span>
+              <ArrowRight size={14} weight="bold" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setDesignOpen(false)}
+              data-testid="design-collapse-button"
+              className="btn-quiet text-sm"
+            >
+              Collapse workspace
+            </button>
+          )}
         </div>
       </section>
+
+      {/* Inline 6-agent workspace */}
+      <AnimatePresence>
+        {designOpen && (
+          <motion.section
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            data-testid="inline-guided-section"
+          >
+            <GuidedWorkflow
+              role={role}
+              initialMode={assessmentMode || "interview"}
+              initialReasoning={requireReasoning}
+              initialMinutes={minutes}
+              initialNotes={notes}
+              onFinalized={onCaseFinalized}
+            />
+          </motion.section>
+        )}
+      </AnimatePresence>
 
       {/* Cases list */}
       <section>
@@ -266,27 +339,13 @@ export default function RoleDetail() {
         ) : (
           <div className="space-y-3">
             {cases.map((c) => (
-              <Link
+              <DraftedCaseRow
                 key={c.id}
-                to={`/cases/${c.id}`}
-                data-testid={`case-item-${c.id}`}
-                className="encore-card p-6 hover:-translate-y-0.5 hover:shadow-md transition-all group block"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <StatusPill status={c.status} />
-                      <span className="inline-flex items-center gap-1 text-xs text-ink-soft">
-                        <Clock size={12} /> ~{c.estimated_minutes} min
-                      </span>
-                      <span className="text-xs text-ink-soft">· {c.sections?.length || 0} sections · {c.rubric?.length || 0} rubric dimensions</span>
-                    </div>
-                    <h3 className="font-display text-lg font-bold tracking-tight mb-2 group-hover:text-brand transition-colors">{c.title}</h3>
-                    <p className="text-sm text-ink-soft line-clamp-2">{c.scenario_text}</p>
-                  </div>
-                  <ArrowRight size={16} className="text-ink-soft mt-1 transition-transform group-hover:translate-x-1 shrink-0" />
-                </div>
-              </Link>
+                caseDoc={c}
+                expanded={expandedCaseId === c.id}
+                onToggle={() => setExpandedCaseId((cur) => (cur === c.id ? null : c.id))}
+                onRevise={() => reviseCase(c)}
+              />
             ))}
           </div>
         )}
@@ -295,77 +354,107 @@ export default function RoleDetail() {
   );
 }
 
-// ModeSelector — Phase H Slice 2. Three assessment modes + a "require reasoning"
-// toggle that conditions the generator's prompt. Lives on RoleDetail above the
-// generate-button row, so both one-shot and 6-agent flows pick it up.
-const MODE_OPTIONS = [
-  {
-    key: "screening",
-    label: "Screening",
-    blurb: "High-volume first cut. Fast, gaming-resistant, comparable across many candidates.",
-    eta: "~30–45 min",
-  },
-  {
-    key: "takehome",
-    label: "Take-home",
-    blurb: "Mid-funnel async work. Mix of objective + reasoning + open questions.",
-    eta: "~90–180 min",
-  },
-  {
-    key: "interview",
-    label: "Interview",
-    blurb: "Late-funnel open scenario for back-and-forth conversation; voice-recordable.",
-    eta: "~45–60 min",
-  },
-];
-
-function ModeSelector({ mode, setMode, requireReasoning, setRequireReasoning, disabled }) {
+/* ============== Drafted case row ============== */
+function DraftedCaseRow({ caseDoc, expanded, onToggle, onRevise }) {
+  const c = caseDoc;
+  const reduce = useReducedMotion();
   return (
-    <div className="mb-5" data-testid="mode-selector">
-      <p className="encore-overline mb-2">Assessment mode</p>
-      <div className="grid sm:grid-cols-3 gap-2">
-        {MODE_OPTIONS.map((opt) => {
-          const active = mode === opt.key;
-          return (
-            <button
-              key={opt.key}
-              type="button"
-              onClick={() => setMode(opt.key)}
-              disabled={disabled}
-              data-testid={`mode-option-${opt.key}`}
-              data-state={active ? "active" : "inactive"}
-              className={`text-left rounded-xl border px-3 py-3 transition-all ${
-                active
-                  ? "border-brand bg-brand/[0.04] shadow-sm ring-2 ring-brand/15"
-                  : "border-black/10 bg-white hover:border-black/20 hover:bg-black/[0.02]"
-              } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
-            >
-              <div className="flex items-center justify-between gap-2 mb-1">
-                <span className={`text-sm font-semibold ${active ? "text-brand" : "text-ink"}`}>{opt.label}</span>
-                <span className="text-[10px] text-ink-soft tabular-nums">{opt.eta}</span>
-              </div>
-              <p className="text-[11px] text-ink-soft leading-snug">{opt.blurb}</p>
-            </button>
-          );
-        })}
-      </div>
-      <label
-        className={`mt-3 inline-flex items-start gap-2 text-xs ${disabled ? "opacity-50" : "cursor-pointer"}`}
-        data-testid="require-reasoning-row"
+    <div className="encore-card overflow-hidden" data-testid={`case-row-${c.id}`}>
+      <button
+        type="button"
+        onClick={onToggle}
+        data-testid={`case-row-toggle-${c.id}`}
+        className="w-full text-left p-6 hover:bg-black/[0.015] transition-colors"
       >
-        <input
-          type="checkbox"
-          checked={requireReasoning}
-          onChange={(e) => setRequireReasoning(e.target.checked)}
-          disabled={disabled}
-          data-testid="require-reasoning-toggle"
-          className="mt-0.5 h-3.5 w-3.5 rounded border-black/20 text-brand focus:ring-brand/20"
-        />
-        <span className="text-ink-soft leading-snug">
-          <strong className="text-ink">Require reasoning on objective questions.</strong> Every MCQ / fill-blank / match item gets a short
-          &ldquo;Why? (1–2 sentences)&rdquo; follow-up so we capture judgement, not lucky guesses.
-        </span>
-      </label>
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <StatusPill status={c.status} />
+              {c.assessment_mode && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider border border-brand/30 bg-brand/[0.05] text-brand rounded-full px-2 py-0.5">
+                  {MODE_LABEL[c.assessment_mode] || c.assessment_mode}
+                </span>
+              )}
+              <span className="inline-flex items-center gap-1 text-xs text-ink-soft">
+                <Clock size={12} /> ~{c.estimated_minutes} min
+              </span>
+              <span className="text-xs text-ink-soft">&middot; {c.sections?.length || 0} sections &middot; {c.rubric?.length || 0} rubric dimensions</span>
+            </div>
+            <h3 className="font-display text-lg font-bold tracking-tight mb-2">{c.title}</h3>
+            <p className="text-sm text-ink-soft line-clamp-2">{c.scenario_text}</p>
+          </div>
+          {expanded
+            ? <CaretUp size={14} className="text-ink-soft mt-1 shrink-0" />
+            : <CaretDown size={14} className="text-ink-soft mt-1 shrink-0" />}
+        </div>
+      </button>
+
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            initial={reduce ? false : { height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={reduce ? undefined : { height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="border-t border-black/[0.06] bg-canvas/40"
+            data-testid={`case-row-expanded-${c.id}`}
+          >
+            <div className="p-6 space-y-5">
+              <div>
+                <p className="encore-overline mb-2">Scenario</p>
+                <p className="text-sm text-ink leading-relaxed whitespace-pre-wrap">{c.scenario_text}</p>
+              </div>
+
+              <div>
+                <p className="encore-overline mb-2">Sections ({c.sections?.length || 0})</p>
+                <div className="space-y-2.5">
+                  {(c.sections || []).map((s, i) => (
+                    <div key={s.id} className="border border-black/[0.06] rounded-lg p-4">
+                      <p className="text-[11px] text-ink-soft mb-0.5">Section {i + 1}</p>
+                      <h4 className="font-display font-bold tracking-tight mb-1">{s.title}</h4>
+                      <p className="text-sm text-ink mb-2">{s.intro}</p>
+                      <ol className="list-decimal list-inside text-sm text-ink space-y-1">
+                        {(s.questions || []).map((q, j) => <li key={j}>{q}</li>)}
+                      </ol>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="encore-overline mb-2">Rubric ({c.rubric?.length || 0} dimensions &middot; weights sum to 100)</p>
+                <ul className="space-y-2">
+                  {(c.rubric || []).map((r) => (
+                    <li key={r.id} className="text-sm">
+                      <strong>{r.name}</strong> <span className="text-ink-soft text-xs">— {r.weight}%</span>
+                      <p className="text-xs text-ink-soft mt-0.5">{r.description}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-black/[0.06] flex-wrap">
+                <button
+                  type="button"
+                  onClick={onRevise}
+                  data-testid={`case-row-revise-${c.id}`}
+                  className="btn-quiet text-sm"
+                  title="Re-open the 6-agent workspace at the same mode + duration"
+                >
+                  <Sparkle size={13} weight="duotone" /> Revise via agents
+                </button>
+                <Link
+                  to={`/cases/${c.id}`}
+                  data-testid={`case-row-open-${c.id}`}
+                  className="btn-primary text-sm"
+                >
+                  Open editor <ArrowRight size={13} />
+                </Link>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -386,7 +475,6 @@ function StatusPill({ status }) {
 }
 
 // EditableField — click-to-edit inline text used for role title and free-text fields.
-// Single-line: commits on Enter or blur. Multiline: commits on blur or Cmd/Ctrl+Enter.
 function EditableField({ value, onSave, multiline = false, className = "", placeholder = "", testid }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value || "");

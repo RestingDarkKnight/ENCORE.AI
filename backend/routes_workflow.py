@@ -41,6 +41,8 @@ class WorkflowStartRequest(BaseModel):
     jd_text: Optional[str] = None
     assessment_mode: Optional[str] = "interview"
     require_reasoning: Optional[bool] = False
+    estimated_minutes: Optional[int] = None
+    notes: Optional[str] = ""
 
 
 class RunStepRequest(BaseModel):
@@ -68,12 +70,22 @@ async def start_workflow(payload: WorkflowStartRequest, manager: ManagerPublic =
     mode = (payload.assessment_mode or "interview").lower()
     if mode not in ("screening", "takehome", "interview"):
         mode = "interview"
+    em = payload.estimated_minutes
+    if em is not None:
+        try:
+            em = int(em)
+            if em < 5 or em > 480:
+                em = None
+        except (TypeError, ValueError):
+            em = None
     wf = await create_workflow(
         manager_id=manager.id,
         role_id=payload.role_id,
         domain_key=domain_key,
         assessment_mode=mode,
         require_reasoning=bool(payload.require_reasoning),
+        estimated_minutes=em,
+        notes=payload.notes or "",
     )
     return wf
 
@@ -220,6 +232,8 @@ async def finalize_workflow(workflow_id: str, manager: ManagerPublic = Depends(c
     if not role:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Role not found")
 
+    em_user = wf.get("estimated_minutes")
+    estimated_minutes = em_user if isinstance(em_user, int) and em_user > 0 else (final.get("estimated_minutes") or 60)
     now = datetime.now(timezone.utc).isoformat()
     case_doc = {
         "id": str(uuid.uuid4()),
@@ -230,7 +244,7 @@ async def finalize_workflow(workflow_id: str, manager: ManagerPublic = Depends(c
         "scenario_text": final.get("scenario_text") or "",
         "sections": final.get("sections") or [],
         "rubric": final.get("rubric") or [],
-        "estimated_minutes": final.get("estimated_minutes") or 60,
+        "estimated_minutes": estimated_minutes,
         "assessment_mode": wf.get("assessment_mode") or "interview",
         "require_reasoning": bool(wf.get("require_reasoning")),
         "language_register": role.get("language_register"),

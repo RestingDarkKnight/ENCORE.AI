@@ -133,6 +133,21 @@ export default function CaseDetail() {
     });
     await patch({ sections: newSections });
   };
+  const addQuestion = async (sectionId) => {
+    const newSections = c.sections.map((s) => {
+      if (s.id !== sectionId) return s;
+      return { ...s, questions: [...s.questions, "New question — click to edit"] };
+    });
+    await patch({ sections: newSections });
+  };
+  const removeQuestion = async (sectionId, qIdx) => {
+    const newSections = c.sections.map((s) => {
+      if (s.id !== sectionId) return s;
+      const qs = s.questions.filter((_, i) => i !== qIdx);
+      return { ...s, questions: qs };
+    });
+    await patch({ sections: newSections });
+  };
   const updateRubric = async (dimId, updates) => {
     const newRubric = c.rubric.map((r) => (r.id === dimId ? { ...r, ...updates } : r));
     await patch({ rubric: newRubric });
@@ -416,21 +431,44 @@ export default function CaseDetail() {
 
               <ol className="space-y-3 mt-4 list-decimal list-inside marker:text-ink-soft marker:text-xs">
                 {s.questions.map((q, qIdx) => (
-                  <li key={qIdx} className="text-ink text-sm leading-relaxed pl-1" data-testid={`section-${s.id}-q-${qIdx}`}>
+                  <li key={qIdx} className="text-ink text-sm leading-relaxed pl-1 group/q" data-testid={`section-${s.id}-q-${qIdx}`}>
                     {isApproved ? (
                       <span>{q}</span>
                     ) : (
-                      <EditableText
-                        value={q}
-                        onSave={(v) => updateQuestion(s.id, qIdx, v)}
-                        multiline
-                        testid={`section-${s.id}-q-${qIdx}-edit`}
-                        className="text-ink text-sm leading-relaxed inline"
-                      />
+                      <span className="inline-flex items-start gap-2 w-full">
+                        <span className="flex-1">
+                          <EditableText
+                            value={q}
+                            onSave={(v) => updateQuestion(s.id, qIdx, v)}
+                            multiline
+                            testid={`section-${s.id}-q-${qIdx}-edit`}
+                            className="text-ink text-sm leading-relaxed inline"
+                          />
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeQuestion(s.id, qIdx)}
+                          data-testid={`section-${s.id}-q-${qIdx}-remove`}
+                          title="Remove question"
+                          className="opacity-0 group-hover/q:opacity-60 hover:!opacity-100 text-[10px] text-signal-error transition-opacity shrink-0 mt-1"
+                        >
+                          ✕
+                        </button>
+                      </span>
                     )}
                   </li>
                 ))}
               </ol>
+              {!isApproved && (
+                <button
+                  type="button"
+                  onClick={() => addQuestion(s.id)}
+                  data-testid={`section-${s.id}-add-question`}
+                  className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-brand hover:text-brand-hover border border-dashed border-brand/30 hover:border-brand/60 rounded-md px-3 py-1.5"
+                >
+                  + Add question
+                </button>
+              )}
             </motion.div>
           ))}
         </motion.div>

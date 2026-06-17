@@ -27,7 +27,7 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-async def create_workflow(*, manager_id: str, role_id: str, domain_key: str, assessment_mode: str = "interview", require_reasoning: bool = False) -> Dict[str, Any]:
+async def create_workflow(*, manager_id: str, role_id: str, domain_key: str, assessment_mode: str = "interview", require_reasoning: bool = False, estimated_minutes: Optional[int] = None, notes: Optional[str] = None) -> Dict[str, Any]:
     doc = {
         "id": str(uuid.uuid4()),
         "case_id": None,
@@ -36,6 +36,8 @@ async def create_workflow(*, manager_id: str, role_id: str, domain_key: str, ass
         "domain_key": domain_key,
         "assessment_mode": assessment_mode,
         "require_reasoning": require_reasoning,
+        "estimated_minutes": estimated_minutes,
+        "notes": notes or "",
         "status": "in_progress",
         "current_step": 1,
         "step_outputs": {},   # keyed by step number 1..6
@@ -57,6 +59,8 @@ async def get_workflow(workflow_id: str, manager_id: str) -> Dict[str, Any]:
     d = doc_strip(d)
     d.setdefault("assessment_mode", "interview")
     d.setdefault("require_reasoning", False)
+    d.setdefault("estimated_minutes", None)
+    d.setdefault("notes", "")
     return d
 
 
@@ -66,6 +70,8 @@ async def list_workflows_for_role(role_id: str, manager_id: str) -> List[Dict[st
         d = doc_strip(d)
         d.setdefault("assessment_mode", "interview")
         d.setdefault("require_reasoning", False)
+        d.setdefault("estimated_minutes", None)
+        d.setdefault("notes", "")
         out.append(d)
     return out
 

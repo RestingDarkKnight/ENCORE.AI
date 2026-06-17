@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from claude_service import call_claude_json, has_api_key, smoke_test
 from db import get_db
 from language_register import register_block
-from assessment_mode import generator_mode_block, require_reasoning_block
+from assessment_mode import generator_mode_block, require_reasoning_block  # noqa: F401
 from models import (
     Case,
     CaseGenerateRequest,
@@ -103,57 +103,13 @@ async def claude_health():
     return await smoke_test()
 
 
-@router.post("/generate", response_model=Case, status_code=status.HTTP_201_CREATED)
-async def generate_case(payload: CaseGenerateRequest, manager: ManagerPublic = Depends(current_manager)):
-    if not has_api_key():
-        raise HTTPException(
-            status.HTTP_503_SERVICE_UNAVAILABLE,
-            "Claude is not configured yet. Set ANTHROPIC_API_KEY on the server to enable case generation.",
-        )
-
-    role = await get_db().roles.find_one({"id": payload.role_id, "manager_id": manager.id})
-    if not role:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Role not found")
-    role = doc_strip(role)
-
-    user_prompt = (
-        "Design a work-simulation case study for the role described below.\n\n"
-        f"{_role_brief(role)}\n"
-        f"Additional notes from the hiring manager: {payload.notes or 'none'}\n\n"
-        f"{generator_mode_block(payload.assessment_mode)}\n\n"
-        f"{require_reasoning_block(payload.require_reasoning)}\n\n"
-        f"{register_block(role.get('language_register'), label='writing this case')}\n\n"
-        "Return JSON only, matching the schema in the system message."
+@router.post("/generate", response_model=Case, status_code=status.HTTP_410_GONE, deprecated=True)
+async def generate_case_removed():
+    """One-shot generation has been retired. Use the 6-agent workflow at /api/workflows."""
+    raise HTTPException(
+        status.HTTP_410_GONE,
+        "One-shot case generation has been retired. Use the 6-agent workflow at POST /api/workflows.",
     )
-
-    try:
-        draft = await call_claude_json(
-            system=_SYSTEM_PROMPT_GENERATE,
-            user=user_prompt,
-            model=CaseStudyDraft,
-            max_tokens=6000,
-            timeout=120.0,
-        )
-    except Exception as e:
-        logger.exception("Case generation failed")
-        raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Failed to generate a valid case study: {e}")
-
-    case = Case(
-        role_id=role["id"],
-        manager_id=manager.id,
-        title=draft.title,
-        scenario_text=draft.scenario_text,
-        sections=draft.sections,
-        rubric=draft.rubric,
-        estimated_minutes=draft.estimated_minutes,
-        assessment_mode=payload.assessment_mode,
-        require_reasoning=payload.require_reasoning,
-        language_register=role.get("language_register"),
-        model_used=os.environ.get("CLAUDE_MODEL", "claude-opus-4-8"),
-        model_version=os.environ.get("CLAUDE_MODEL", "claude-opus-4-8"),
-    )
-    await get_db().cases.insert_one(case.model_dump())
-    return case
 
 
 @router.post("/{case_id}/regenerate", response_model=Case)

@@ -43,29 +43,14 @@ def role_id(auth_headers):
     return rr.json()["id"]
 
 
-# ============================ Case generation schema ============================
-class TestCaseGenerateSchema:
-    def test_generate_accepts_mode_and_reasoning(self, auth_headers, role_id):
-        # ANTHROPIC_API_KEY empty => 503 expected; we only verify schema acceptance
-        body = {
-            "role_id": role_id,
-            "notes": "test",
-            "assessment_mode": "screening",
-            "require_reasoning": True,
-        }
+# ============================ Case generation endpoint retired ============================
+class TestCaseGenerateRetired:
+    def test_generate_returns_410_gone(self, auth_headers, role_id):
+        # One-shot /cases/generate has been retired in favour of the 6-agent workflow.
+        body = {"role_id": role_id, "assessment_mode": "screening", "require_reasoning": True}
         r = requests.post(f"{API}/cases/generate", headers=auth_headers, json=body, timeout=20)
-        # NOT a 422 validation error — that's the assertion
-        assert r.status_code != 422, f"Schema rejected new fields: {r.text}"
-        # Should be 503 (claude not configured) per env setup
-        assert r.status_code in (503, 200, 201, 502), f"Unexpected status: {r.status_code} {r.text}"
-        if r.status_code == 503:
-            assert "claude" in r.text.lower() or "anthropic" in r.text.lower()
-
-    def test_generate_with_default_values(self, auth_headers, role_id):
-        # Sending only role_id - defaults should be applied (interview/false)
-        body = {"role_id": role_id}
-        r = requests.post(f"{API}/cases/generate", headers=auth_headers, json=body, timeout=20)
-        assert r.status_code != 422, f"Defaults not honored: {r.text}"
+        assert r.status_code == 410, f"Expected 410 Gone, got {r.status_code}: {r.text}"
+        assert "retired" in r.text.lower() or "workflow" in r.text.lower()
 
 
 # ============================ Workflow persistence ============================
@@ -124,7 +109,60 @@ class TestWorkflowPersistence:
         for wf in lst:
             assert "assessment_mode" in wf, f"Missing assessment_mode: {wf}"
             assert "require_reasoning" in wf, f"Missing require_reasoning: {wf}"
+            assert "estimated_minutes" in wf, f"Missing estimated_minutes: {wf}"
+            assert "notes" in wf, f"Missing notes: {wf}"
             assert wf["assessment_mode"] in ("screening", "takehome", "interview")
+
+
+# ============================ Slice H2: estimated_minutes + notes ============================
+class TestWorkflowMinutesNotes:
+    def test_workflow_accepts_minutes_and_notes(self, auth_headers, role_id):
+        body = {
+            "role_id": role_id,
+            "assessment_mode": "screening",
+            "require_reasoning": False,
+            "estimated_minutes": 45,
+            "notes": "Focus on data structures",
+        }
+        r = requests.post(f"{API}/workflows", headers=auth_headers, json=body, timeout=15)
+        assert r.status_code == 201, r.text
+        wf = r.json()
+        assert wf["estimated_minutes"] == 45
+        assert wf["notes"] == "Focus on data structures"
+        # Verify via GET
+        g = requests.get(f"{API}/workflows/{wf['id']}", headers=auth_headers, timeout=10)
+        assert g.status_code == 200
+        gwf = g.json()
+        assert gwf["estimated_minutes"] == 45
+        assert gwf["notes"] == "Focus on data structures"
+
+    def test_workflow_minutes_out_of_range_coerced_to_null(self, auth_headers, role_id):
+        # 999 is > 480 -> coerce to None
+        body = {"role_id": role_id, "estimated_minutes": 999}
+        r = requests.post(f"{API}/workflows", headers=auth_headers, json=body, timeout=15)
+        assert r.status_code == 201, r.text
+        assert r.json()["estimated_minutes"] is None
+
+    def test_workflow_minutes_negative_coerced_to_null(self, auth_headers, role_id):
+        body = {"role_id": role_id, "estimated_minutes": -5}
+        r = requests.post(f"{API}/workflows", headers=auth_headers, json=body, timeout=15)
+        assert r.status_code == 201, r.text
+        assert r.json()["estimated_minutes"] is None
+
+    def test_workflow_minutes_too_small_coerced_to_null(self, auth_headers, role_id):
+        # 5 is the lower bound (inclusive). 4 should be coerced.
+        body = {"role_id": role_id, "estimated_minutes": 4}
+        r = requests.post(f"{API}/workflows", headers=auth_headers, json=body, timeout=15)
+        assert r.status_code == 201, r.text
+        assert r.json()["estimated_minutes"] is None
+
+    def test_workflow_minutes_omitted_defaults_null(self, auth_headers, role_id):
+        body = {"role_id": role_id}
+        r = requests.post(f"{API}/workflows", headers=auth_headers, json=body, timeout=15)
+        assert r.status_code == 201
+        wf = r.json()
+        assert wf["estimated_minutes"] is None
+        assert wf["notes"] == ""
 
 
 # ============================ Regression: existing endpoints still work ============================

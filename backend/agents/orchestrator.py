@@ -170,6 +170,8 @@ def _build_task(*, agent_name: str, role: Dict[str, Any], workflow: Dict[str, An
 
     mode = workflow.get("assessment_mode") or "interview"
     require_reasoning = bool(workflow.get("require_reasoning"))
+    est_minutes = workflow.get("estimated_minutes")
+    manager_notes = (workflow.get("notes") or "").strip()
 
     register_hint = ""
     if agent_name in ("generator", "polisher", "architect"):
@@ -186,14 +188,27 @@ def _build_task(*, agent_name: str, role: Dict[str, Any], workflow: Dict[str, An
     elif agent_name == "critic":
         mode_hint = "\n\n=== Mode-specific critic checks ===\n" + _critic_mode(mode)
     elif agent_name == "polisher":
-        # Polisher must respect the same mode rules when it rewrites.
         mode_hint = "\n\n" + _gen_mode(mode)
         rr = _req_reasoning(require_reasoning)
         if rr:
             mode_hint += "\n\n" + rr
 
+    # Manager-provided target time (Slice 2 — user-picked from mode pills/custom).
+    time_hint = ""
+    if est_minutes and agent_name in ("architect", "generator", "polisher"):
+        time_hint = (
+            f"\n\n=== Target duration (manager-set) ===\n"
+            f"The candidate has approximately {est_minutes} minutes total. Calibrate the depth, number of "
+            f"sections, and length of questions so a strong candidate finishes comfortably within this budget. "
+            f"Set estimated_minutes={est_minutes} in your output."
+        )
+
+    notes_hint = ""
+    if manager_notes and agent_name in ("analyst", "architect", "generator", "polisher"):
+        notes_hint = f"\n\n=== Manager notes (steer the case here) ===\n{manager_notes}"
+
     base_tail = f"\n\nUSER INPUT (optional):\n{user_input}" if user_input else ""
-    base_tail = mode_hint + register_hint + base_tail
+    base_tail = mode_hint + time_hint + notes_hint + register_hint + base_tail
 
     if agent_name == "analyst":
         return ("Read the role record below and produce your structured role interpretation.\n\n"
