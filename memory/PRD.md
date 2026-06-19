@@ -221,6 +221,18 @@ A hiring manager describes a role; ENCORE uses Claude to generate a tailored cas
 - The legacy `/roles/:roleId/cases/new-guided` route now `<Navigate>`s back to `/roles/:roleId` so bookmarks still work.
 - Test coverage: 22/22 backend pytest passing (including 5 new tests for em + notes); end-to-end Playwright validated mode/time pills, custom input, reset behavior, pencil-to-edit, resume, redirect, add/remove question, no console errors (iteration_9.json).
 
+**Slice 3 ✅ — Typed questions + deterministic scoring (2026-02-19)**
+- Six question types: `mcq`, `multiple_correct`, `fill_blank`, `match`, `short_answer`, `open`. Each question is now a `Question` object with type-specific answer-key fields (options + correct_option_ids, acceptable_answers, numerical_answer+tolerance, pairs, reasoning_key, points).
+- Legacy `List[str]` questions auto-upgrade to `type='open'` on read via a Pydantic `field_validator` on `CaseSection`. No migration needed; idempotent.
+- Generator agent learns the new schema and emits typed questions; mode discipline (screening → objective-heavy, take-home → mixed, interview → mostly open) is built into the system prompt.
+- New `QuestionEditor` component in CaseDetail lets the manager change a question's type, edit options / keyphrases / pairs / numerical key, and (when `case.require_reasoning`) write an "Ideal 'Why?' answer" reasoning key — used by Slice 4's grading LLM as ground truth.
+- `CaseUpdateRequest` extended with `require_reasoning` + `assessment_mode` so managers can toggle these on draft cases via PATCH.
+- Candidate-facing view (`CandidateCaseView`) strips ALL answer keys and sets `require_reasoning=true` ONLY on objective questions when the case requires it. Open questions never inherit it.
+- New `TakeCase` widgets per type: radio (mcq), checkboxes (multiple_correct), text input (fill_blank), per-left dropdowns (match), textarea (short_answer/open). Voice recording is now gated to `open + short_answer` only. When `q.require_reasoning` is set, a "Why? (1–2 sentences)" textarea appears under the answer.
+- New `question_engine.py` deterministic scorer: per-type rules + any-keyphrase match for short_answer (no LLM); numerical answers with tolerance; flags items for manual review when no keyphrase matches or the question is `open`. When `case.require_reasoning` is true the objective portion becomes 60% of the final score; the remaining 40% is `reasoning_pending` (Slice 4 owns the LLM/human reasoning grade).
+- Submit endpoint runs `score_response` automatically and persists a `deterministic_score` summary on the response doc.
+- Test coverage: 22/22 unit tests on the scorer (`test_question_engine.py`), 7/7 HTTP integration tests (`test_phase_h_slice3.py`), full regression at 99/99 backend pytest, 0 frontend console errors, all per-type widgets + reasoning gating + voice gating verified live (iteration_10.json).
+
 **Slice 3 (P0) — pending**: 6 formal question types (`mcq`, `multiple_correct`, `fill_blank`, `match`, `short_answer`, `open`) + deterministic scoring engine for the objective ones. The `require_reasoning` boolean and `assessment_mode` literal are already on `Case` and ready to drive Slice 3 logic.
 
 **Slice 4 (P0) — pending**: Grading system — human-in-the-loop review gate, identity-blind LLM evaluation with quoted evidence, transparent candidate-facing feedback.

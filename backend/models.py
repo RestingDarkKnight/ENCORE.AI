@@ -312,6 +312,8 @@ class CaseUpdateRequest(BaseModel):
     sections: Optional[List[CaseSection]] = None
     rubric: Optional[List[RubricDimension]] = None
     estimated_minutes: Optional[int] = None
+    require_reasoning: Optional[bool] = None
+    assessment_mode: Optional[AssessmentMode] = None
 
 
 class SectionRegenerateRequest(BaseModel):
