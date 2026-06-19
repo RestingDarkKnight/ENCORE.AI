@@ -120,6 +120,10 @@ async def get_shared_report(share_token: str):
     if not evaluation:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "This report isn\u2019t ready yet.")
 
+    # Slice 4 review-gate: hide provisional evaluations from candidate-facing surface.
+    if evaluation.get("status") and evaluation.get("status") != "finalized":
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "This report isn\u2019t ready yet — the hiring manager is still reviewing.")
+
     initials_only = bool(a.get("share_initials_only", True))
     candidate_display = _initials_of(a.get("candidate_name") or a.get("candidate_email")) if initials_only else (a.get("candidate_name") or a.get("candidate_email"))
 
@@ -139,8 +143,8 @@ async def get_shared_report(share_token: str):
         case_title=case.get("title") if case else "Untitled case",
         role_title=(role or {}).get("job_title") or "Role",
         submitted_at=a.get("submitted_at"),
-        overall_score=evaluation.get("overall_score"),
-        recommendation=evaluation.get("recommendation"),
+        overall_score=evaluation.get("final_score") or evaluation.get("overall_score"),
+        recommendation=evaluation.get("final_recommendation") or evaluation.get("recommendation"),
         scores=scores_out,
         strengths=evaluation.get("strengths", []),
         concerns=evaluation.get("concerns", []),

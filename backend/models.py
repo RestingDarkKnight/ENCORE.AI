@@ -443,7 +443,23 @@ class CriterionScore(BaseModel):
     justification: str
 
 
+class ReasoningGrade(BaseModel):
+    """LLM (or manager) grade of a single 'Why?' reasoning sub-question.
+
+    Phase H Slice 4: the LLM scores the candidate's reasoning against the manager's
+    `reasoning_key` and quotes the candidate verbatim. Score is 0..1. The manager
+    can override during the review gate.
+    """
+    question_key: str  # "{section_id}::{q_idx}"
+    score: float = Field(ge=0, le=1, default=0.0)
+    quote: str = ""
+    justification: str = ""
+    overridden: bool = False
+    override_note: Optional[str] = None
+
+
 Recommendation = Literal["strong_hire", "hire", "borderline", "no_hire"]
+EvaluationStatus = Literal["provisional", "finalized"]
 
 
 class Evaluation(BaseModel):
@@ -459,6 +475,17 @@ class Evaluation(BaseModel):
     summary: str
     model_used: Optional[str] = None
     created_at: str = Field(default_factory=_now_iso)
+    # ---- Phase H Slice 4 — review-gate + reasoning grading ----
+    status: EvaluationStatus = "provisional"
+    reasoning_grades: List[ReasoningGrade] = Field(default_factory=list)
+    deterministic_score: Optional[Dict[str, Any]] = None
+    manager_overrides: Dict[str, float] = Field(default_factory=dict)  # dimension_id → new score
+    override_note: Optional[str] = None
+    section_comments: Dict[str, str] = Field(default_factory=dict)  # section_id → candidate-facing comment
+    final_score: Optional[float] = None
+    final_recommendation: Optional[Recommendation] = None
+    finalized_at: Optional[str] = None
+    finalized_by: Optional[str] = None
 
 
 class EvaluationDraft(BaseModel):
@@ -469,6 +496,17 @@ class EvaluationDraft(BaseModel):
     strengths: List[str]
     concerns: List[str]
     summary: str
+    # Phase H Slice 4 — optional reasoning grades (only present when require_reasoning is on)
+    reasoning_grades: List[ReasoningGrade] = Field(default_factory=list)
+
+
+class EvaluationOverrideRequest(BaseModel):
+    """Manager edits during the review gate. All optional."""
+    manager_overrides: Optional[Dict[str, float]] = None
+    override_note: Optional[str] = None
+    section_comments: Optional[Dict[str, str]] = None
+    reasoning_grades: Optional[List[ReasoningGrade]] = None
+    final_recommendation: Optional[Recommendation] = None
 
 
 # ---------- Hiring decision ----------

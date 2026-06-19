@@ -22,6 +22,7 @@ class CaseSummary(BaseModel):
     invited: int
     submitted: int
     evaluated: int
+    pending_review: int = 0  # Slice 4 — provisional evaluations awaiting manager finalize
     avg_overall_score: Optional[float] = None
     rec_distribution: Dict[str, int]                 # strong_hire/hire/borderline/no_hire counts
     dimension_averages: List[Dict[str, Any]]          # [{id, name, average}]
@@ -48,6 +49,9 @@ class CandidateRow(BaseModel):
     concerns: List[str] = []
     summary: Optional[str] = None
     decision: Optional[str] = None
+    # Phase H Slice 4 — review-gate signals
+    evaluation_id: Optional[str] = None
+    evaluation_status: Optional[str] = None  # provisional | finalized | None
     decided_at: Optional[str] = None
 
 
@@ -58,6 +62,7 @@ class CaseReport(BaseModel):
     role_title: str
     rubric: List[Dict[str, Any]]                     # [{id, name, weight}]
     rows: List[CandidateRow]
+    pending_review: int = 0  # Phase H Slice 4 — # of provisional evals on this case
 
 
 # ---------- Helpers ----------
@@ -71,15 +76,23 @@ async def _build_case_summary(db, manager_id: str, case_doc: dict) -> Optional[C
     submitted = sum(1 for a in assignments if a.get("status") == "submitted")
 
     assignment_ids = [a["id"] for a in assignments]
-    evals = [doc_strip(e) async for e in db.evaluations.find({"assignment_id": {"$in": assignment_ids}})]
-    evaluated = len(evals)
+    evals_all = [doc_strip(e) async for e in db.evaluations.find({"assignment_id": {"$in": assignment_ids}})]
+    evaluated = len(evals_all)
+    pending_review = sum(1 for e in evals_all if e.get("status") and e.get("status") != "finalized")
+    # Aggregates use FINALIZED evals only (Slice 4 review gate). Legacy evals
+    # without a status field are treated as finalized so older data still counts.
+    evals = [e for e in evals_all if (e.get("status") in (None, "finalized"))]
 
-    avg_overall = mean(e["overall_score"] for e in evals) if evals else None
+    def _final_or_overall(e):
+        return e.get("final_score") if e.get("final_score") is not None else e.get("overall_score")
+
+    avg_overall = mean([s for s in (_final_or_overall(e) for e in evals) if s is not None]) if evals else None
 
     rec_dist = {"strong_hire": 0, "hire": 0, "borderline": 0, "no_hire": 0}
     for e in evals:
-        if e.get("recommendation") in rec_dist:
-            rec_dist[e["recommendation"]] += 1
+        rec = e.get("final_recommendation") or e.get("recommendation")
+        if rec in rec_dist:
+            rec_dist[rec] += 1
 
     # Per-dimension averages — group scores by dimension_id from all evals
     dim_buckets: Dict[str, Dict[str, Any]] = {}
@@ -104,6 +117,7 @@ async def _build_case_summary(db, manager_id: str, case_doc: dict) -> Optional[C
         invited=invited,
         submitted=submitted,
         evaluated=evaluated,
+        pending_review=pending_review,
         avg_overall_score=avg_overall,
         rec_distribution=rec_dist,
         dimension_averages=dimension_averages,
@@ -176,8 +190,8 @@ async def get_case_report(case_id: str, manager: ManagerPublic = Depends(current
                 status=a.get("status", "sent"),
                 invited_at=a.get("created_at", ""),
                 submitted_at=a.get("submitted_at"),
-                overall_score=ev.get("overall_score") if ev else None,
-                recommendation=ev.get("recommendation") if ev else None,
+                overall_score=(ev.get("final_score") if ev and ev.get("final_score") is not None else (ev.get("overall_score") if ev else None)),
+                recommendation=(ev.get("final_recommendation") or ev.get("recommendation")) if ev else None,
                 scores=[
                     {"dimension_id": s["dimension_id"], "name": s["name"], "score": s["score"], "weight": s.get("weight", 0)}
                     for s in (ev.get("scores", []) if ev else [])
@@ -186,6 +200,8 @@ async def get_case_report(case_id: str, manager: ManagerPublic = Depends(current
                 concerns=ev.get("concerns", []) if ev else [],
                 summary=ev.get("summary") if ev else None,
                 decision=dec.get("outcome") if dec else None,
+                evaluation_id=ev.get("id") if ev else None,
+                evaluation_status=ev.get("status") if ev else None,
                 decided_at=dec.get("decided_at") if dec else None,
             )
         )
@@ -199,6 +215,7 @@ async def get_case_report(case_id: str, manager: ManagerPublic = Depends(current
         )
     )
 
+    pending_count = sum(1 for row in rows if row.evaluation_status and row.evaluation_status != "finalized")
     return CaseReport(
         case_id=case_id,
         case_title=case_doc.get("title") or "Untitled case",
@@ -206,4 +223,5 @@ async def get_case_report(case_id: str, manager: ManagerPublic = Depends(current
         role_title=role_doc.get("job_title") or "Unknown role",
         rubric=rubric_summary,
         rows=rows,
+        pending_review=pending_count,
     )

@@ -8,6 +8,7 @@ import {
   CaretLeft, CaretRight, Share, Copy, Check, X as XIcon, EyeSlash, Eye, Printer,
 } from "@phosphor-icons/react";
 import api, { API_BASE } from "@/lib/api";
+import ReviewPanel from "@/components/ReviewPanel";
 
 const REC = {
   strong_hire: { label: "Strong Hire", cls: "bg-brand-moss text-white border-brand-moss" },
@@ -196,7 +197,8 @@ export default function ReportView() {
   if (!data.assignment) return <div className="text-center text-ink-soft py-16">Report not found.</div>;
 
   const { assignment: a, response: r, case: c, evaluation: e, decision } = data;
-  const recCfg = e ? REC[e.recommendation] : null;
+  const recKey = e ? (e.final_recommendation || e.recommendation) : null;
+  const recCfg = recKey ? REC[recKey] : null;
 
   // Prev/next neighbour computation
   const curIdx = siblings.indexOf(assignmentId);
@@ -290,7 +292,7 @@ export default function ReportView() {
           </div>
           {e ? (
             <div className="flex items-center gap-5">
-              <ScoreRing value={e.overall_score} />
+              <ScoreRing value={e.final_score != null ? e.final_score : e.overall_score} />
               <span className={`inline-flex items-center text-sm font-bold uppercase tracking-wider border rounded-full px-4 py-2 ${recCfg.cls}`} data-testid="recommendation-pill">
                 {recCfg.label}
               </span>
@@ -309,6 +311,15 @@ export default function ReportView() {
           ) : null}
         </div>
       </header>
+
+      {/* Slice 4 — review-gate panel */}
+      {e && (
+        <ReviewPanel
+          evaluation={e}
+          caseDoc={c}
+          onChange={(newEval) => setData((d) => ({ ...d, evaluation: newEval }))}
+        />
+      )}
 
       {/* Not yet evaluated state */}
       {!e && a.status === "submitted" && (
@@ -394,14 +405,34 @@ export default function ReportView() {
                     const key = `${sec.id}::${qIdx}`;
                     const ans = r.answers?.[key];
                     const aud = r.audio?.[key];
+                    const reasoning = r.reasonings?.[key];
+                    const qText = typeof q === "string" ? q : (q?.prompt || "");
+                    const qType = typeof q === "object" ? q?.type : null;
+                    const renderedAnswer = ans == null
+                      ? null
+                      : typeof ans === "string"
+                        ? ans
+                        : Array.isArray(ans)
+                          ? ans.join(", ")
+                          : (typeof ans === "object")
+                            ? Object.entries(ans).map(([k, v]) => `${k} → ${v}`).join("; ")
+                            : String(ans);
                     return (
                       <div key={qIdx} className="border-l-2 border-black/[0.08] pl-4">
-                        <p className="text-xs text-ink-soft mb-1">Q{qIdx + 1}: {q}</p>
-                        {ans ? (
-                          <p className="text-sm text-ink whitespace-pre-wrap mt-1">{ans}</p>
+                        <p className="text-xs text-ink-soft mb-1">
+                          Q{qIdx + 1}{qType ? ` [${qType}]` : ""}: {qText}
+                        </p>
+                        {renderedAnswer ? (
+                          <p className="text-sm text-ink whitespace-pre-wrap mt-1">{renderedAnswer}</p>
                         ) : !aud ? (
                           <p className="text-xs italic text-ink-soft mt-1">(no written answer)</p>
                         ) : null}
+                        {reasoning && (
+                          <div className="mt-2 border-l-2 border-brand-sand/40 pl-2.5">
+                            <p className="text-[10px] uppercase tracking-wider text-brand-sand mb-0.5">Why? (reasoning)</p>
+                            <p className="text-xs text-ink whitespace-pre-wrap">{reasoning}</p>
+                          </div>
+                        )}
                         {aud && (
                           <div className="mt-2 flex items-center gap-3 flex-wrap" data-testid={`report-audio-${sec.id}-${qIdx}`}>
                             <span className="inline-flex items-center gap-1 text-xs text-brand-moss font-medium"><Microphone size={12} /> Voice answer</span>

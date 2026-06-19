@@ -115,6 +115,15 @@ export default function Reports() {
                   {c.case_title}
                 </h3>
                 <Funnel invited={c.invited} submitted={c.submitted} evaluated={c.evaluated} />
+                {c.pending_review > 0 && (
+                  <span
+                    data-testid={`case-pending-review-${c.case_id}`}
+                    className="inline-flex items-center gap-1 mt-2 text-[10px] font-bold uppercase tracking-wider border border-signal-warning/35 bg-signal-warning/[0.08] text-signal-warning rounded-full px-2 py-0.5"
+                    title="Provisional evaluations awaiting your finalization"
+                  >
+                    {c.pending_review} pending review
+                  </span>
+                )}
               </div>
               <AverageRing value={c.avg_overall_score} />
             </div>
@@ -288,6 +297,15 @@ function CaseDrillDown({ caseId, onBack }) {
                       </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
+                      {row.evaluation_status === "provisional" && (
+                        <span
+                          data-testid={`reports-row-pending-${row.assignment_id}`}
+                          className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider border border-signal-warning/35 bg-signal-warning/[0.08] text-signal-warning rounded-full px-2 py-0.5"
+                          title="Provisional — open to finalize"
+                        >
+                          Pending review
+                        </span>
+                      )}
                       {row.decision && DEC_BADGE[row.decision] && (
                         <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider border rounded-full px-2 py-0.5 ${DEC_BADGE[row.decision].cls}`}>
                           <CheckCircle weight="fill" size={10} /> {DEC_BADGE[row.decision].label}

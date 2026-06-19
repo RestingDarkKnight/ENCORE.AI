@@ -29,7 +29,7 @@ export default function Leaderboard({ caseId }) {
   if (loading) return null;
   if (!data || data.rows.length < 2) return null;
 
-  const evaluated = data.rows.filter((r) => r.overall_score != null);
+  const evaluated = data.rows.filter((r) => (r.final_score != null) || r.overall_score != null);
   if (evaluated.length < 2) return null;
 
   return (
@@ -48,7 +48,7 @@ export default function Leaderboard({ caseId }) {
         animate="show"
         variants={{ hidden: {}, show: { transition: { staggerChildren: 0.06, delayChildren: 0.05 } } }}
       >
-        {data.rows.filter((r) => r.overall_score != null).map((row, i) => {
+        {data.rows.filter((r) => (r.final_score != null) || r.overall_score != null).map((row, i) => {
           const recCls = REC_PILL[row.recommendation] || "bg-canvas border-black/10 text-ink-soft";
           const dec = DEC_BADGE[row.decision];
           return (
@@ -64,13 +64,22 @@ export default function Leaderboard({ caseId }) {
               >
                 <div className="font-display text-lg font-black text-ink-soft tabular-nums w-8">#{i + 1}</div>
                 <div className="font-display text-2xl font-black tracking-tighter text-brand tabular-nums w-14">
-                  {row.overall_score.toFixed(1)}
+                  {(row.final_score != null ? row.final_score : row.overall_score).toFixed(1)}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-ink truncate">{row.assignment.candidate_name || row.assignment.candidate_email}</p>
                   <p className="text-xs text-ink-soft truncate">{row.summary || row.assignment.candidate_email}</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                  {row.evaluation_status === "provisional" && (
+                    <span
+                      data-testid={`leaderboard-pending-${row.assignment.id}`}
+                      className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider border border-signal-warning/35 bg-signal-warning/[0.08] text-signal-warning rounded-full px-2 py-0.5"
+                      title="Pending your review"
+                    >
+                      Pending review
+                    </span>
+                  )}
                   {dec && (
                     <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider border rounded-full px-2 py-0.5 ${dec.cls}`}>
                       <CheckCircle weight="fill" size={10} /> {dec.label}
