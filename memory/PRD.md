@@ -210,6 +210,17 @@ A hiring manager describes a role; ENCORE uses Claude to generate a tailored cas
 - Legacy workflow docs without the new fields are read with safe defaults (`interview` / false).
 - Test coverage: 11/11 new pytest cases passing (`backend/tests/test_phase_h_slice2.py`); frontend Playwright flow (mode toggle, reasoning toggle, fresh + resume scenarios) passing in iteration_8.
 
+**Slice 2.5 ✅ — Unified case-design experience (2026-02-17)**
+- The one-shot `/api/cases/generate` endpoint is **retired** (returns 410 Gone). The 6-agent workflow is now the only generation path.
+- RoleDetail card title is now "Let's design a work-simulation case." Six agents collaborate; the manager approves each step.
+- New `ModeTimeSelector` component: each mode tab darkens when active and expands inward to show three preset time pills (Screening 30/45/60, Take-home 90/120/180, Interview 30/45/60) plus a custom-minute input (5–480). Once a time is picked, the dark tab shows "Mode · NN min · tap pencil to change". Switching modes resets the time choice.
+- Workflow now persists `estimated_minutes` and `notes` (manager-supplied); orchestrator injects them as a target-duration hint and notes block into the Architect / Generator / Polisher prompts.
+- The 6-agent workspace is now an embeddable component (`/app/frontend/src/components/GuidedWorkflow.jsx`) and renders inline below the design card on `/roles/:id`. Page transitions are gone. The "Calls used: N / 8" budget badge has been removed per spec.
+- Drafted cases now expand inline to show scenario, sections, and full rubric; each row has a "Revise via agents" button (pre-fills the design card with the case's mode + duration and re-opens the workspace) and an "Open editor" link.
+- CaseDetail now supports inline `+ Add question` and per-question remove buttons on non-approved cases.
+- The legacy `/roles/:roleId/cases/new-guided` route now `<Navigate>`s back to `/roles/:roleId` so bookmarks still work.
+- Test coverage: 22/22 backend pytest passing (including 5 new tests for em + notes); end-to-end Playwright validated mode/time pills, custom input, reset behavior, pencil-to-edit, resume, redirect, add/remove question, no console errors (iteration_9.json).
+
 **Slice 3 (P0) — pending**: 6 formal question types (`mcq`, `multiple_correct`, `fill_blank`, `match`, `short_answer`, `open`) + deterministic scoring engine for the objective ones. The `require_reasoning` boolean and `assessment_mode` literal are already on `Case` and ready to drive Slice 3 logic.
 
 **Slice 4 (P0) — pending**: Grading system — human-in-the-loop review gate, identity-blind LLM evaluation with quoted evidence, transparent candidate-facing feedback.
