@@ -233,6 +233,17 @@ A hiring manager describes a role; ENCORE uses Claude to generate a tailored cas
 - Submit endpoint runs `score_response` automatically and persists a `deterministic_score` summary on the response doc.
 - Test coverage: 22/22 unit tests on the scorer (`test_question_engine.py`), 7/7 HTTP integration tests (`test_phase_h_slice3.py`), full regression at 99/99 backend pytest, 0 frontend console errors, all per-type widgets + reasoning gating + voice gating verified live (iteration_10.json).
 
+**Slice 4 ✅ — Grading review gate (2026-02-19)**
+- Every new evaluation now starts as `status='provisional'`. The candidate's shared report 404s ("This report isn't ready yet — the hiring manager is still reviewing.") and the row is excluded from `/api/reports/summary` averages / leaderboards until finalized.
+- One identity-NOT-stripped Claude call per candidate (per user direction — no stripping); the evaluator simultaneously scores rubric dimensions AND grades every reasoning sub-question against the manager's `reasoning_key`. Single call keeps the per-candidate cost flat.
+- New endpoints: `PATCH /api/evaluations/{id}` (overrides + section comments + reasoning grades + recommendation), `POST /api/evaluations/{id}/finalize` (lock), `POST /api/evaluations/{id}/reopen` (unlock), `GET /api/evaluations/{id}`.
+- `_compute_final_score` blends manager-overridden rubric scores (70%) with the deterministic objective layer (30%) when a `deterministic_score` is present. Recommendation auto-derives from score bands (≥4 strong_hire, ≥3 hire, ≥2 borderline, else no_hire); manager can override explicitly.
+- New `ReviewPanel` component on `/reports/:assignmentId`: per-dimension override sliders with live "Final score preview", reasoning-grade sliders (when present), section comments visible to candidate, override rationale, recommendation pills, Save draft + Finalize + Reopen buttons.
+- Reports Hub case cards show "N pending review" pill; drill-down rows show per-candidate pending pill; Leaderboard rows expose `evaluation_status` (pending pill renders when ≥2 evaluated candidates).
+- Shared report (`/r/:token`) returns 404 while provisional; serves `final_score` + `final_recommendation` after finalize.
+- Fixed legacy-answer rendering bug on ReportView: typed answers (string/array/object) all serialize to readable text — no more "Object as React child" crash.
+- Test coverage: 10/10 Slice 4 pytest (`test_phase_h_slice4.py`), 109/109 backend regression, frontend Playwright validated provisional→override→finalize→reopen flow, shared-report gating, Reports Hub pending pills, no JS console errors (iteration_11.json).
+
 **Slice 3 (P0) — pending**: 6 formal question types (`mcq`, `multiple_correct`, `fill_blank`, `match`, `short_answer`, `open`) + deterministic scoring engine for the objective ones. The `require_reasoning` boolean and `assessment_mode` literal are already on `Case` and ready to drive Slice 3 logic.
 
 **Slice 4 (P0) — pending**: Grading system — human-in-the-loop review gate, identity-blind LLM evaluation with quoted evidence, transparent candidate-facing feedback.

@@ -132,7 +132,10 @@ export default function Reports() {
               <RecDistribution dist={c.rec_distribution} total={c.evaluated} />
             </div>
             <div className="mt-4 flex items-center justify-end text-xs text-ink-soft">
-              <span className="inline-flex items-center gap-1 group-hover:text-brand transition-colors">
+              <span
+                data-testid={`open-case-detail-${c.case_id}`}
+                className="inline-flex items-center gap-1 group-hover:text-brand transition-colors"
+              >
                 Open detail <CaretRight weight="bold" size={12} className="transition-transform group-hover:translate-x-0.5" />
               </span>
             </div>
