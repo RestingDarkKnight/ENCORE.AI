@@ -10,6 +10,22 @@ import { motion, AnimatePresence } from "framer-motion";
 import InvitePanel from "@/components/InvitePanel";
 import Leaderboard from "@/components/Leaderboard";
 import KebabMenu from "@/components/KebabMenu";
+import QuestionEditor from "@/components/QuestionEditor";
+
+// Build a blank typed question (defaults to open). Used by "+ Add question".
+const NEW_Q = () => ({
+  id: `q-${Math.random().toString(36).slice(2, 9)}`,
+  type: "open",
+  prompt: "New question — click to edit",
+  options: [],
+  correct_option_ids: [],
+  acceptable_answers: [],
+  numerical_answer: null,
+  numerical_tolerance: 0,
+  pairs: [],
+  reasoning_key: null,
+  points: 1,
+});
 
 /**
  * Inline editable text — single line (heading) or multi-line.
@@ -124,11 +140,11 @@ export default function CaseDetail() {
     const newSections = c.sections.map((s) => (s.id === sectionId ? { ...s, ...updates } : s));
     await patch({ sections: newSections });
   };
-  const updateQuestion = async (sectionId, qIdx, val) => {
+  const updateQuestion = async (sectionId, qIdx, newQ) => {
     const newSections = c.sections.map((s) => {
       if (s.id !== sectionId) return s;
       const qs = [...s.questions];
-      qs[qIdx] = val;
+      qs[qIdx] = newQ;
       return { ...s, questions: qs };
     });
     await patch({ sections: newSections });
@@ -136,7 +152,7 @@ export default function CaseDetail() {
   const addQuestion = async (sectionId) => {
     const newSections = c.sections.map((s) => {
       if (s.id !== sectionId) return s;
-      return { ...s, questions: [...s.questions, "New question — click to edit"] };
+      return { ...s, questions: [...s.questions, NEW_Q()] };
     });
     await patch({ sections: newSections });
   };
@@ -429,36 +445,19 @@ export default function CaseDetail() {
                 />
               )}
 
-              <ol className="space-y-3 mt-4 list-decimal list-inside marker:text-ink-soft marker:text-xs">
+              <div className="space-y-3 mt-4">
                 {s.questions.map((q, qIdx) => (
-                  <li key={qIdx} className="text-ink text-sm leading-relaxed pl-1 group/q" data-testid={`section-${s.id}-q-${qIdx}`}>
-                    {isApproved ? (
-                      <span>{q}</span>
-                    ) : (
-                      <span className="inline-flex items-start gap-2 w-full">
-                        <span className="flex-1">
-                          <EditableText
-                            value={q}
-                            onSave={(v) => updateQuestion(s.id, qIdx, v)}
-                            multiline
-                            testid={`section-${s.id}-q-${qIdx}-edit`}
-                            className="text-ink text-sm leading-relaxed inline"
-                          />
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => removeQuestion(s.id, qIdx)}
-                          data-testid={`section-${s.id}-q-${qIdx}-remove`}
-                          title="Remove question"
-                          className="opacity-0 group-hover/q:opacity-60 hover:!opacity-100 text-[10px] text-signal-error transition-opacity shrink-0 mt-1"
-                        >
-                          ✕
-                        </button>
-                      </span>
-                    )}
-                  </li>
+                  <QuestionEditor
+                    key={q.id || qIdx}
+                    question={q}
+                    requireReasoning={!!c.require_reasoning}
+                    locked={isApproved}
+                    onChange={(newQ) => updateQuestion(s.id, qIdx, newQ)}
+                    onRemove={() => removeQuestion(s.id, qIdx)}
+                    testidPrefix={`section-${s.id}-q-${qIdx}`}
+                  />
                 ))}
-              </ol>
+              </div>
               {!isApproved && (
                 <button
                   type="button"

@@ -46,6 +46,7 @@ export default function TakeCase() {
   const [stage, setStage] = useState("welcome"); // welcome | sections | submitting | done
   const [sectionIdx, setSectionIdx] = useState(0);
   const [answers, setAnswers] = useState({});
+  const [reasonings, setReasonings] = useState({});
   const [audio, setAudio] = useState({}); // key -> AudioRecord
   const [honorChecked, setHonorChecked] = useState(false);
 
@@ -60,6 +61,7 @@ export default function TakeCase() {
       const data = await fetchTake(token);
       setView(data);
       setAnswers(data.saved_answers || {});
+      setReasonings(data.saved_reasonings || {});
       setAudio(data.saved_audio || {});
       setHonorChecked(!!data.honor_code_accepted);
       if (data.status === "submitted") setStage("done");
@@ -86,12 +88,12 @@ export default function TakeCase() {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
       try {
-        await saveProgress(token, answers, honorChecked);
+        await saveProgress(token, answers, honorChecked, reasonings);
         setSavedAt(new Date());
       } catch {/* silent — next save will retry */}
     }, 800);
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
-  }, [answers, honorChecked, stage, token, view]);
+  }, [answers, reasonings, honorChecked, stage, token, view]);
 
   if (loading) return <FullPageMessage>Loading your case…</FullPageMessage>;
   if (err) return <FullPageMessage tone="error">{err}</FullPageMessage>;
@@ -121,7 +123,7 @@ export default function TakeCase() {
   const onSubmit = async () => {
     setStage("submitting");
     try {
-      await submitTake(token, answers, elapsedSec);
+      await submitTake(token, answers, elapsedSec, reasonings);
       setStage("done");
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Submit failed. Please try again.");
@@ -181,6 +183,8 @@ export default function TakeCase() {
               scenario={view.case.scenario_text}
               answers={answers}
               setAnswers={setAnswers}
+              reasonings={reasonings}
+              setReasonings={setReasonings}
               audio={audio}
               setAudio={setAudio}
               onPrev={() => setSectionIdx((i) => Math.max(0, i - 1))}
@@ -263,7 +267,7 @@ function Welcome({ view, honorChecked, setHonorChecked, onBegin }) {
 }
 
 // ---------- Sections stage ----------
-function SectionsStage({ token, section, sectionIdx, total, scenario, answers, setAnswers, audio, setAudio, onPrev, onNext, onSubmit, isLast }) {
+function SectionsStage({ token, section, sectionIdx, total, scenario, answers, setAnswers, reasonings, setReasonings, audio, setAudio, onPrev, onNext, onSubmit, isLast }) {
   return (
     <motion.div
       initial={{ opacity: 0, x: 16 }}
@@ -300,8 +304,10 @@ function SectionsStage({ token, section, sectionIdx, total, scenario, answers, s
               question={q}
               qIdx={qIdx}
               sectionId={section.id}
-              answer={answers[key] || ""}
+              answer={answers[key]}
               setAnswer={(val) => setAnswers((a) => ({ ...a, [key]: val }))}
+              reasoning={reasonings[key] || ""}
+              setReasoning={(val) => setReasonings((r) => ({ ...r, [key]: val }))}
               audio={audio[key]}
               onAudioUploaded={(rec) => setAudio((m) => ({ ...m, [key]: rec }))}
             />
@@ -346,8 +352,23 @@ function SectionsStage({ token, section, sectionIdx, total, scenario, answers, s
   );
 }
 
-// ---------- Question card with text + voice ----------
-function QuestionCard({ token, question, qIdx, sectionId, answer, setAnswer, audio, onAudioUploaded }) {
+// ---------- Question card — typed inputs per question type ----------
+const TYPE_BADGE = {
+  mcq: "Single choice",
+  multiple_correct: "Select all that apply",
+  fill_blank: "Fill in the blank",
+  match: "Match",
+  short_answer: "Short answer",
+  open: "Open",
+};
+
+function QuestionCard({ token, question, qIdx, sectionId, answer, setAnswer, reasoning, setReasoning, audio, onAudioUploaded }) {
+  // Backward compat: legacy questions arrive as strings → treat as open.
+  const q = typeof question === "string" ? { id: `q${qIdx}`, type: "open", prompt: question } : question;
+  const type = q.type || "open";
+
+  // Voice recording stays available for open + short_answer types only.
+  const allowVoice = type === "open" || type === "short_answer";
   const { recording, elapsed, error, start, stop } = useVoiceRecorder();
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -376,67 +397,168 @@ function QuestionCard({ token, question, qIdx, sectionId, answer, setAnswer, aud
     }
   };
 
-  const key = `${sectionId}::${qIdx}`;
-
   return (
     <div className="encore-card p-6" data-testid={`question-${sectionId}-${qIdx}`}>
-      <p className="encore-overline mb-2">Question {qIdx + 1}</p>
-      <p className="text-ink leading-relaxed mb-4">{question}</p>
+      <div className="flex items-center gap-2 mb-2 flex-wrap">
+        <p className="encore-overline">Question {qIdx + 1}</p>
+        <span className="text-[10px] font-bold uppercase tracking-wider border border-brand/30 bg-brand/[0.05] text-brand rounded-full px-2 py-0.5" data-testid={`question-type-${sectionId}-${qIdx}`}>
+          {TYPE_BADGE[type] || type}
+        </span>
+      </div>
+      <p className="text-ink leading-relaxed mb-4">{q.prompt}</p>
 
-      <textarea
-        value={answer}
-        onChange={(e) => setAnswer(e.target.value)}
-        rows={5}
-        placeholder="Think out loud. Bullet points are fine."
-        data-testid={`answer-input-${sectionId}-${qIdx}`}
-        className="w-full bg-canvas border border-black/15 rounded-lg px-4 py-3 focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all resize-y"
-      />
+      {/* Type-specific input */}
+      {type === "mcq" && (
+        <div className="space-y-2" data-testid={`mcq-${sectionId}-${qIdx}`}>
+          {(q.options || []).map((opt) => (
+            <label key={opt.id} className={`flex items-center gap-3 border rounded-lg p-3 cursor-pointer transition-all ${answer === opt.id ? "border-brand bg-brand/[0.04]" : "border-black/12 hover:border-black/25"}`}>
+              <input
+                type="radio"
+                name={`${sectionId}-${qIdx}`}
+                checked={answer === opt.id}
+                onChange={() => setAnswer(opt.id)}
+                data-testid={`mcq-opt-${sectionId}-${qIdx}-${opt.id}`}
+                className="h-4 w-4 text-brand focus:ring-brand/20"
+              />
+              <span className="text-sm">{opt.text}</span>
+            </label>
+          ))}
+        </div>
+      )}
 
-      <div className="mt-3 flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2">
-          {!recording ? (
-            <button
-              type="button"
-              onClick={startRec}
-              disabled={uploading}
-              data-testid={`record-start-${sectionId}-${qIdx}`}
-              className="inline-flex items-center gap-2 border border-black/15 hover:border-black/30 hover:bg-black/[0.02] rounded-lg px-3 py-1.5 text-sm font-medium disabled:opacity-50"
-            >
-              <Microphone size={14} />
-              {audio ? "Re-record voice" : "Record voice answer"}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={stopRec}
-              data-testid={`record-stop-${sectionId}-${qIdx}`}
-              className="inline-flex items-center gap-2 bg-signal-error text-white rounded-lg px-3 py-1.5 text-sm font-medium animate-pulse"
-            >
-              <Stop weight="fill" size={12} />
-              Stop · {fmtMmSs(elapsed)}
-            </button>
-          )}
-          {uploading && (
-            <span className="text-xs text-ink-soft" data-testid={`upload-progress-${sectionId}-${qIdx}`}>
-              Uploading {progress}%
-            </span>
+      {type === "multiple_correct" && (
+        <div className="space-y-2" data-testid={`mc-${sectionId}-${qIdx}`}>
+          {(q.options || []).map((opt) => {
+            const picked = Array.isArray(answer) ? answer.includes(opt.id) : false;
+            return (
+              <label key={opt.id} className={`flex items-center gap-3 border rounded-lg p-3 cursor-pointer transition-all ${picked ? "border-brand bg-brand/[0.04]" : "border-black/12 hover:border-black/25"}`}>
+                <input
+                  type="checkbox"
+                  checked={picked}
+                  onChange={() => {
+                    const cur = Array.isArray(answer) ? answer : [];
+                    setAnswer(picked ? cur.filter((x) => x !== opt.id) : [...cur, opt.id]);
+                  }}
+                  data-testid={`mc-opt-${sectionId}-${qIdx}-${opt.id}`}
+                  className="h-4 w-4 text-brand focus:ring-brand/20"
+                />
+                <span className="text-sm">{opt.text}</span>
+              </label>
+            );
+          })}
+        </div>
+      )}
+
+      {type === "fill_blank" && (
+        <input
+          type="text"
+          value={typeof answer === "string" ? answer : ""}
+          onChange={(e) => setAnswer(e.target.value)}
+          placeholder="Type your answer"
+          data-testid={`fill-${sectionId}-${qIdx}`}
+          className="w-full bg-canvas border border-black/15 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none"
+        />
+      )}
+
+      {type === "match" && (
+        <div className="space-y-2" data-testid={`match-${sectionId}-${qIdx}`}>
+          {(q.pairs_left || []).map((left) => {
+            const cur = (answer && typeof answer === "object" && !Array.isArray(answer)) ? answer : {};
+            return (
+              <div key={left} className="flex items-center gap-3 border border-black/12 rounded-lg p-3">
+                <span className="text-sm font-medium flex-1">{left}</span>
+                <span className="text-ink-soft text-xs">→</span>
+                <select
+                  value={cur[left] || ""}
+                  onChange={(e) => setAnswer({ ...cur, [left]: e.target.value })}
+                  data-testid={`match-${sectionId}-${qIdx}-${left}`}
+                  className="flex-1 bg-canvas border border-black/15 rounded-md px-2.5 py-1.5 text-sm focus:ring-2 focus:ring-brand/20 outline-none"
+                >
+                  <option value="">— pick —</option>
+                  {(q.pairs_right_pool || []).map((r) => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {(type === "short_answer" || type === "open") && (
+        <textarea
+          value={typeof answer === "string" ? answer : ""}
+          onChange={(e) => setAnswer(e.target.value)}
+          rows={type === "short_answer" ? 3 : 5}
+          placeholder={type === "short_answer" ? "Keep it tight — 1-2 sentences." : "Think out loud. Bullet points are fine."}
+          data-testid={`answer-input-${sectionId}-${qIdx}`}
+          className="w-full bg-canvas border border-black/15 rounded-lg px-4 py-3 focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all resize-y"
+        />
+      )}
+
+      {/* Reasoning follow-up (when case requires reasoning and type is objective) */}
+      {q.require_reasoning && type !== "open" && (
+        <div className="mt-3 border-l-2 border-brand-sand/40 pl-3" data-testid={`reasoning-wrap-${sectionId}-${qIdx}`}>
+          <label className="block text-[11px] font-semibold uppercase tracking-wider text-brand-sand mb-1">Why? (1–2 sentences)</label>
+          <textarea
+            value={reasoning || ""}
+            onChange={(e) => setReasoning(e.target.value)}
+            rows={2}
+            placeholder="Justify your pick briefly."
+            data-testid={`reasoning-input-${sectionId}-${qIdx}`}
+            className="w-full bg-brand-sand/[0.03] border border-brand-sand/25 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-brand-sand/20 outline-none resize-y"
+          />
+        </div>
+      )}
+
+      {/* Voice recorder — only for open / short_answer */}
+      {allowVoice && (
+        <div className="mt-3 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            {!recording ? (
+              <button
+                type="button"
+                onClick={startRec}
+                disabled={uploading}
+                data-testid={`record-start-${sectionId}-${qIdx}`}
+                className="inline-flex items-center gap-2 border border-black/15 hover:border-black/30 hover:bg-black/[0.02] rounded-lg px-3 py-1.5 text-sm font-medium disabled:opacity-50"
+              >
+                <Microphone size={14} />
+                {audio ? "Re-record voice" : "Record voice answer"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={stopRec}
+                data-testid={`record-stop-${sectionId}-${qIdx}`}
+                className="inline-flex items-center gap-2 bg-signal-error text-white rounded-lg px-3 py-1.5 text-sm font-medium animate-pulse"
+              >
+                <Stop weight="fill" size={12} />
+                Stop · {fmtMmSs(elapsed)}
+              </button>
+            )}
+            {uploading && (
+              <span className="text-xs text-ink-soft" data-testid={`upload-progress-${sectionId}-${qIdx}`}>
+                Uploading {progress}%
+              </span>
+            )}
+          </div>
+
+          {audio && !recording && !uploading && (
+            <div className="flex items-center gap-2" data-testid={`audio-saved-${sectionId}-${qIdx}`}>
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-brand-moss">
+                <CheckCircle weight="fill" size={12} /> Voice saved
+              </span>
+              <audio
+                controls
+                src={publicAudioUrl(token, sectionId, qIdx) + `?k=${encodeURIComponent(audio.storage_path)}`}
+                preload="none"
+                className="h-7"
+              />
+            </div>
           )}
         </div>
-
-        {audio && !recording && !uploading && (
-          <div className="flex items-center gap-2" data-testid={`audio-saved-${sectionId}-${qIdx}`}>
-            <span className="inline-flex items-center gap-1 text-xs font-medium text-brand-moss">
-              <CheckCircle weight="fill" size={12} /> Voice saved
-            </span>
-            <audio
-              controls
-              src={publicAudioUrl(token, sectionId, qIdx) + `?k=${encodeURIComponent(audio.storage_path)}`}
-              preload="none"
-              className="h-7"
-            />
-          </div>
-        )}
-      </div>
+      )}
 
       {error && (
         <p className="mt-2 text-xs text-signal-error inline-flex items-center gap-1"><Warning size={12} /> {error}</p>

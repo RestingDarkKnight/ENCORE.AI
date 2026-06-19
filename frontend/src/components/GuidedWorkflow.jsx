@@ -438,8 +438,8 @@ function GeneratorOutput({ output, runStep, sendFeedback, busy }) {
             <p className="encore-overline mb-1">Section {i + 1}</p>
             <h3 className="font-display text-base font-bold tracking-tight mb-1">{s.title}</h3>
             <p className="text-sm text-ink mb-2">{s.intro}</p>
-            <ol className="list-decimal list-inside text-sm text-ink space-y-1">
-              {(s.questions || []).map((q, j) => <li key={j}>{q}</li>)}
+            <ol className="list-decimal list-inside text-sm text-ink space-y-1.5">
+              {(s.questions || []).map((q, j) => <TypedQuestionLine key={j} q={q} />)}
             </ol>
           </div>
         ))}
@@ -542,8 +542,8 @@ function PolisherOutput({ output, finalize, sendFeedback, busy }) {
             <p className="encore-overline mb-1">Section {i + 1}</p>
             <h3 className="font-display text-base font-bold tracking-tight mb-1">{s.title}</h3>
             <p className="text-sm text-ink mb-2">{s.intro}</p>
-            <ol className="list-decimal list-inside text-sm text-ink space-y-1">
-              {(s.questions || []).map((q, j) => <li key={j}>{q}</li>)}
+            <ol className="list-decimal list-inside text-sm text-ink space-y-1.5">
+              {(s.questions || []).map((q, j) => <TypedQuestionLine key={j} q={q} />)}
             </ol>
           </div>
         ))}
@@ -560,6 +560,50 @@ function PolisherOutput({ output, finalize, sendFeedback, busy }) {
         }}
       />
     </div>
+  );
+}
+
+/* ============== Typed question line (used by Generator + Polisher previews) ============== */
+const TYPE_BADGE = {
+  mcq: "Single-choice",
+  multiple_correct: "Multi-select",
+  fill_blank: "Fill blank",
+  match: "Match",
+  short_answer: "Short answer",
+  open: "Open",
+};
+
+function TypedQuestionLine({ q }) {
+  // Accept string (legacy) or typed Question object
+  if (typeof q === "string") return <li>{q}</li>;
+  const t = q?.type || "open";
+  return (
+    <li className="leading-relaxed">
+      <span className="inline-block text-[9px] font-bold uppercase tracking-wider border border-brand/25 bg-brand/[0.05] text-brand rounded-full px-1.5 py-0.5 mr-1.5 align-middle">{TYPE_BADGE[t] || t}</span>
+      {q.prompt || "—"}
+      {q.options?.length > 0 && (
+        <ul className="mt-1 ml-4 space-y-0.5">
+          {q.options.map((o) => (
+            <li key={o.id} className={`text-xs ${q.correct_option_ids?.includes(o.id) ? "text-brand-moss font-medium" : "text-ink-soft"}`}>
+              {q.correct_option_ids?.includes(o.id) ? "✓ " : "○ "}{o.text}
+            </li>
+          ))}
+        </ul>
+      )}
+      {q.pairs?.length > 0 && (
+        <ul className="mt-1 ml-4 space-y-0.5">
+          {q.pairs.map((p, i) => (
+            <li key={i} className="text-xs text-ink-soft"><strong className="text-ink">{p.left}</strong> → {p.right}</li>
+          ))}
+        </ul>
+      )}
+      {q.acceptable_answers?.length > 0 && (
+        <p className="mt-1 ml-4 text-[11px] text-ink-soft">key: {q.acceptable_answers.join(" | ")}</p>
+      )}
+      {q.numerical_answer != null && (
+        <p className="mt-1 ml-4 text-[11px] text-ink-soft tabular-nums">numerical: {q.numerical_answer}{q.numerical_tolerance ? ` ± ${q.numerical_tolerance}` : ""}</p>
+      )}
+    </li>
   );
 }
 

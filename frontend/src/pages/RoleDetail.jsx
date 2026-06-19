@@ -413,8 +413,14 @@ function DraftedCaseRow({ caseDoc, expanded, onToggle, onRevise }) {
                       <p className="text-[11px] text-ink-soft mb-0.5">Section {i + 1}</p>
                       <h4 className="font-display font-bold tracking-tight mb-1">{s.title}</h4>
                       <p className="text-sm text-ink mb-2">{s.intro}</p>
-                      <ol className="list-decimal list-inside text-sm text-ink space-y-1">
-                        {(s.questions || []).map((q, j) => <li key={j}>{q}</li>)}
+                      <ol className="list-decimal list-inside text-sm text-ink space-y-1.5">
+                        {(s.questions || []).map((q, j) => (
+                          <li key={j}>
+                            {typeof q === "string" ? q : (
+                              <span>{q.prompt}</span>
+                            )}
+                          </li>
+                        ))}
                       </ol>
                     </div>
                   ))}

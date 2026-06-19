@@ -55,11 +55,38 @@ class GeneratorRubricItem(BaseModel):
     anchors: Dict[str, str]  # {"one": "..", "three": "..", "five": ".."}
 
 
+class _GenQuestionOption(BaseModel):
+    id: str
+    text: str
+
+
+class _GenMatchPair(BaseModel):
+    left: str
+    right: str
+
+
+class GeneratorQuestion(BaseModel):
+    """Typed question emitted by the Generator. Objective types must include their
+    answer key so the deterministic scorer can grade candidate responses.
+    """
+    id: str
+    type: str = "open"  # mcq | multiple_correct | fill_blank | match | short_answer | open
+    prompt: str
+    options: List[_GenQuestionOption] = Field(default_factory=list)
+    correct_option_ids: List[str] = Field(default_factory=list)
+    acceptable_answers: List[str] = Field(default_factory=list)
+    numerical_answer: Optional[float] = None
+    numerical_tolerance: float = 0.0
+    pairs: List[_GenMatchPair] = Field(default_factory=list)
+    reasoning_key: Optional[str] = None
+    points: float = 1.0
+
+
 class GeneratorSection(BaseModel):
     id: str
     title: str
     intro: str
-    questions: List[str]
+    questions: List[GeneratorQuestion]
 
 
 class GeneratorOutput(BaseModel):
@@ -140,8 +167,25 @@ GENERATOR_SYSTEM = (
     "  5) Calibrated difficulty — at the seniority the Analyst named.\n"
     "  6) Job fidelity — feels like real work, not academic.\n"
     "  7) Technical accuracy — no fabricated part numbers, specs, or regulations.\n"
-    "Structure: 2–4 sections, each with an intro and 1–3 open questions. Rubric: 3–5 weighted dimensions "
-    "summing to 100, each with anchors at 1/3/5." + _BASE_TAIL
+    "Structure: 2–4 sections, each with an intro and 1–4 questions.\n"
+    "\n"
+    "=== Question types (Phase H Slice 3) ===\n"
+    "Each question MUST have a stable id (e.g. 'q-1-1') and a type from this set:\n"
+    "  - mcq: single-answer multiple choice. Provide 3–5 options (each with id+text) and ONE correct_option_id.\n"
+    "  - multiple_correct: 2+ correct options. Provide 4–6 options and 2+ correct_option_ids.\n"
+    "  - fill_blank: a sentence with a blank. The blank can accept text (acceptable_answers, case-insensitive) OR a numerical_answer (with numerical_tolerance).\n"
+    "  - match: column-to-column matching. Provide pairs as [{left, right}, ...].\n"
+    "  - short_answer: 1–2 sentence answer. ALWAYS provide acceptable_answers as a list of keyphrases the answer should contain. If the question is numerical, also set numerical_answer + numerical_tolerance. The scorer will any-match keyphrases; if none match the response is flagged for the manager to grade. NEVER leave acceptable_answers empty for short_answer.\n"
+    "  - open: free-form prose / judgment. NO answer key. Used for back-and-forth interview-style questions.\n"
+    "\n"
+    "Mode discipline:\n"
+    "  - In SCREENING, lean on mcq / multiple_correct / fill_blank / match / short_answer. Avoid open.\n"
+    "  - In TAKE-HOME, use a healthy mix; include 1–2 open prompts so we see how candidates structure thinking.\n"
+    "  - In INTERVIEW, use mostly open questions with a couple of short_answer prompts as warm-ups.\n"
+    "\n"
+    "If the reasoning requirement is on, the case-runner will collect a short 'Why? (1–2 sentences)' alongside each objective question — you do NOT need to add a separate question for it; just provide a reasoning_key per objective question describing what an ideal 'Why?' answer looks like.\n"
+    "\n"
+    "Rubric: 3–5 weighted dimensions summing to 100, each with anchors at 1/3/5." + _BASE_TAIL
 )
 
 CRITIC_SYSTEM = (

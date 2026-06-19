@@ -149,14 +149,15 @@ class TestRoles:
         assert r.status_code == 404
 
 
-# ---------- Case generation 503 ----------
+# ---------- Case generation 410 (retired in Phase H Slice 2.5) ----------
 class TestCaseGeneration503:
     def test_generate_returns_503(self, session, demo_headers):
         role = _make_role(session, demo_headers, job_title="TEST_GenRole")
         r = session.post(f"{API}/cases/generate", json={"role_id": role["id"]}, headers=demo_headers)
-        assert r.status_code == 503
+        # One-shot generate has been retired; endpoint now returns 410 Gone.
+        assert r.status_code == 410
         body = r.text.lower()
-        assert "claude" in body or "configured" in body
+        assert "retired" in body or "workflow" in body
 
 
 # ---------- Case edit/approve/reopen using direct Mongo seeding ----------

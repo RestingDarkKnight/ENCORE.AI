@@ -9,8 +9,8 @@ export async function fetchTake(token) {
   return data;
 }
 
-export async function saveProgress(token, answers, honor_code_accepted) {
-  await pub.post(`/take/${token}/progress`, { answers, honor_code_accepted });
+export async function saveProgress(token, answers, honor_code_accepted, reasonings = {}) {
+  await pub.post(`/take/${token}/progress`, { answers, reasonings, honor_code_accepted });
 }
 
 export async function uploadAudio(token, sectionId, qIndex, blob, onProgress) {
@@ -29,9 +29,10 @@ export async function uploadAudio(token, sectionId, qIndex, blob, onProgress) {
   return data;
 }
 
-export async function submitTake(token, answers, time_taken_seconds) {
+export async function submitTake(token, answers, time_taken_seconds, reasonings = {}) {
   const { data } = await pub.post(`/take/${token}/submit`, {
     answers,
+    reasonings,
     honor_code_accepted: true,
     time_taken_seconds,
   });

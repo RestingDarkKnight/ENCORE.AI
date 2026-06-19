@@ -20,7 +20,9 @@ from fastapi import (
 from db import get_db
 from models import (
     AudioRecord,
+    Case,
     CandidateCaseView,
+    CandidateQuestion,
     CandidateResponse,
     CandidateSection,
     ProgressSaveRequest,
@@ -64,12 +66,30 @@ async def _ensure_response(db, assignment_id: str) -> dict:
 
 
 def _candidate_case_view(case_doc: dict) -> CandidateCaseView:
+    # Run case_doc through the Case model so questions get normalized + typed.
+    c = Case(**case_doc).model_dump()
+    case_rr = bool(c.get("require_reasoning"))
+    objective_types = {"mcq", "multiple_correct", "fill_blank", "match", "short_answer"}
+    sections_safe = []
+    for s in c["sections"]:
+        cqs = []
+        for q in s["questions"]:
+            cqs.append(CandidateQuestion(
+                id=q["id"],
+                type=q.get("type") or "open",
+                prompt=q.get("prompt") or "",
+                options=q.get("options") or [],
+                pairs_left=[p["left"] for p in (q.get("pairs") or [])],
+                pairs_right_pool=[p["right"] for p in (q.get("pairs") or [])],
+                require_reasoning=case_rr and (q.get("type") in objective_types),
+            ))
+        sections_safe.append(CandidateSection(id=s["id"], title=s["title"], intro=s["intro"], questions=cqs))
     return CandidateCaseView(
-        case_id=case_doc["id"],
-        title=case_doc["title"],
-        scenario_text=case_doc["scenario_text"],
-        sections=[CandidateSection(**s) for s in case_doc["sections"]],
-        estimated_minutes=case_doc["estimated_minutes"],
+        case_id=c["id"],
+        title=c["title"],
+        scenario_text=c["scenario_text"],
+        sections=sections_safe,
+        estimated_minutes=c["estimated_minutes"],
     )
 
 
@@ -101,6 +121,7 @@ async def get_take(token: str):
         submitted_at=a.get("submitted_at"),
         case=_candidate_case_view(c),
         saved_answers=r.get("answers", {}),
+        saved_reasonings=r.get("reasonings", {}),
         saved_audio={k: AudioRecord(**v) for k, v in r.get("audio", {}).items()},
         honor_code_accepted=r.get("honor_code_accepted", False),
     )
@@ -114,7 +135,7 @@ async def save_progress(token: str, payload: ProgressSaveRequest):
         raise HTTPException(status.HTTP_409_CONFLICT, "This case has already been submitted")
     db = get_db()
     await _ensure_response(db, a["id"])
-    updates = {"answers": payload.answers, "updated_at": _now()}
+    updates = {"answers": payload.answers, "reasonings": payload.reasonings, "updated_at": _now()}
     if payload.honor_code_accepted is not None:
         updates["honor_code_accepted"] = payload.honor_code_accepted
     await db.responses.update_one({"assignment_id": a["id"]}, {"$set": updates})
@@ -208,14 +229,24 @@ async def submit_take(token: str, payload: SubmitRequest, background_tasks: Back
     db = get_db()
     now = _now()
     await _ensure_response(db, a["id"])
+    # Run deterministic scoring for the typed objective questions.
+    try:
+        from question_engine import score_response  # noqa: PLC0415
+        response_for_score = {"answers": payload.answers, "reasonings": payload.reasonings}
+        det_summary = score_response(c, response_for_score)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("Deterministic scoring failed for %s: %s", a["id"], e)
+        det_summary = None
     await db.responses.update_one(
         {"assignment_id": a["id"]},
         {"$set": {
             "answers": payload.answers,
+            "reasonings": payload.reasonings,
             "honor_code_accepted": True,
             "submitted_at": now,
             "time_taken_seconds": payload.time_taken_seconds,
             "updated_at": now,
+            **({"deterministic_score": det_summary} if det_summary else {}),
         }},
     )
     await db.assignments.update_one(

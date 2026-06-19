@@ -151,12 +151,12 @@ class TestRegressionSmoke:
         assert "id" in r.json()
 
     def test_case_generate_503_without_key(self, session, demo_headers):
-        # Need a real role id
+        # /cases/generate retired in Phase H Slice 2.5 — now returns 410 Gone.
         roles = session.get(f"{API}/roles", headers=demo_headers).json()
         assert roles, "no seeded roles to use"
         role_id = roles[0]["id"]
         r = session.post(f"{API}/cases/generate", headers=demo_headers, json={"role_id": role_id})
-        assert r.status_code == 503, r.text
+        assert r.status_code == 410, r.text
 
     def test_leaderboard_works(self, session, demo_headers):
         # Find approved case via Mongo

@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 def _new_id() -> str:
@@ -105,11 +105,95 @@ class RubricDimension(BaseModel):
     anchors: RubricAnchors
 
 
+# ---------- Phase H Slice 3: typed questions ----------
+QuestionType = Literal["mcq", "multiple_correct", "fill_blank", "match", "short_answer", "open"]
+
+
+class QuestionOption(BaseModel):
+    id: str = Field(default_factory=_new_id)
+    text: str
+
+
+class MatchPair(BaseModel):
+    """One left→right pair. The candidate picks the right for each left."""
+    left: str
+    right: str
+
+
+class Question(BaseModel):
+    """A typed question. Objective types carry an answer key; open carries only the prompt.
+
+    The manager edits the answer key in CaseDetail; the deterministic scorer reads it
+    at evaluation time. For backward compatibility, plain strings encountered on read
+    are up-converted to Question(type='open', prompt=<string>) by normalize_questions().
+    """
+    id: str = Field(default_factory=_new_id)
+    type: QuestionType = "open"
+    prompt: str = ""
+    # MCQ / multiple_correct
+    options: List[QuestionOption] = Field(default_factory=list)
+    correct_option_ids: List[str] = Field(default_factory=list)
+    # fill_blank / short_answer — textual acceptable answers (case-insensitive)
+    acceptable_answers: List[str] = Field(default_factory=list)
+    # short_answer / fill_blank — optional numerical key
+    numerical_answer: Optional[float] = None
+    numerical_tolerance: float = 0.0
+    # match — left→right pairs
+    pairs: List[MatchPair] = Field(default_factory=list)
+    # reasoning sub-question — manager's notes describing the ideal "Why?" answer
+    reasoning_key: Optional[str] = None
+    # per-question point weight (default 1; lets the manager rebalance)
+    points: float = 1.0
+
+
 class CaseSection(BaseModel):
     id: str = Field(default_factory=_new_id)
     title: str
     intro: str
-    questions: List[str]
+    # Accept either typed Question objects or legacy plain strings; the validator
+    # below up-converts strings to open-type Question on load.
+    questions: List[Any]
+
+    @field_validator("questions", mode="before")
+    @classmethod
+    def _normalize_questions(cls, v):
+        if not isinstance(v, list):
+            return v
+        out = []
+        for idx, q in enumerate(v):
+            if isinstance(q, str):
+                out.append({
+                    "id": f"sec-q{idx}",
+                    "type": "open",
+                    "prompt": q,
+                    "options": [],
+                    "correct_option_ids": [],
+                    "acceptable_answers": [],
+                    "numerical_answer": None,
+                    "numerical_tolerance": 0.0,
+                    "pairs": [],
+                    "reasoning_key": None,
+                    "points": 1.0,
+                })
+            elif isinstance(q, dict):
+                # backfill missing keys for older typed docs
+                base = {
+                    "id": q.get("id") or f"sec-q{idx}",
+                    "type": q.get("type") or "open",
+                    "prompt": q.get("prompt") or q.get("text") or "",
+                    "options": q.get("options") or [],
+                    "correct_option_ids": q.get("correct_option_ids") or [],
+                    "acceptable_answers": q.get("acceptable_answers") or [],
+                    "numerical_answer": q.get("numerical_answer"),
+                    "numerical_tolerance": q.get("numerical_tolerance") or 0.0,
+                    "pairs": q.get("pairs") or [],
+                    "reasoning_key": q.get("reasoning_key"),
+                    "points": q.get("points") or 1.0,
+                }
+                out.append(base)
+            else:
+                out.append(q)
+        return out
 
 
 class CaseStudyDraft(BaseModel):
@@ -273,12 +357,17 @@ class AudioRecord(BaseModel):
 class CandidateResponse(BaseModel):
     """A candidate's work for an assignment. One per assignment.
 
-    `answers` is keyed by f"{section_id}::{q_idx}" → text.
+    `answers` is keyed by f"{section_id}::{q_idx}" → value. The value type depends on the
+    question type: string for open/short_answer/fill_blank, list[str] of option_ids for
+    mcq/multiple_correct, dict[left→right] for match.
+    `reasonings` is keyed the same way and holds the candidate's "Why?" follow-up text
+    when require_reasoning is on for objective questions.
     `audio` is keyed by the same key → AudioRecord.
     """
     id: str = Field(default_factory=_new_id)
     assignment_id: str
-    answers: Dict[str, str] = Field(default_factory=dict)
+    answers: Dict[str, Any] = Field(default_factory=dict)
+    reasonings: Dict[str, str] = Field(default_factory=dict)
     audio: Dict[str, AudioRecord] = Field(default_factory=dict)
     honor_code_accepted: bool = False
     time_taken_seconds: Optional[int] = None
@@ -287,22 +376,35 @@ class CandidateResponse(BaseModel):
 
 
 class ProgressSaveRequest(BaseModel):
-    answers: Dict[str, str] = Field(default_factory=dict)
+    answers: Dict[str, Any] = Field(default_factory=dict)
+    reasonings: Dict[str, str] = Field(default_factory=dict)
     honor_code_accepted: Optional[bool] = None
 
 
 class SubmitRequest(BaseModel):
-    answers: Dict[str, str] = Field(default_factory=dict)
+    answers: Dict[str, Any] = Field(default_factory=dict)
+    reasonings: Dict[str, str] = Field(default_factory=dict)
     honor_code_accepted: bool = True
     time_taken_seconds: Optional[int] = None
 
 
 # ---------- Candidate-facing case (rubric stripped) ----------
+class CandidateQuestion(BaseModel):
+    """Question as the candidate sees it. Answer keys are stripped."""
+    id: str
+    type: QuestionType = "open"
+    prompt: str
+    options: List[QuestionOption] = Field(default_factory=list)
+    pairs_left: List[str] = Field(default_factory=list)
+    pairs_right_pool: List[str] = Field(default_factory=list)  # shuffled or fixed; candidate picks
+    require_reasoning: bool = False
+
+
 class CandidateSection(BaseModel):
     id: str
     title: str
     intro: str
-    questions: List[str]
+    questions: List[CandidateQuestion]
 
 
 class CandidateCaseView(BaseModel):
@@ -323,7 +425,8 @@ class TakeView(BaseModel):
     started_at: Optional[str]
     submitted_at: Optional[str]
     case: CandidateCaseView
-    saved_answers: Dict[str, str] = Field(default_factory=dict)
+    saved_answers: Dict[str, Any] = Field(default_factory=dict)
+    saved_reasonings: Dict[str, str] = Field(default_factory=dict)
     saved_audio: Dict[str, AudioRecord] = Field(default_factory=dict)
     honor_code_accepted: bool = False
 
