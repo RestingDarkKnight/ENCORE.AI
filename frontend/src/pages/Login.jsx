@@ -3,10 +3,11 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { Compass, ArrowRight } from "@phosphor-icons/react";
 import { toast } from "sonner";
+import GoogleAuthButton from "@/components/GoogleAuthButton";
 
 export default function Login() {
-  const [email, setEmail] = useState("demo.manager@encore.ai");
-  const [password, setPassword] = useState("Encore-Phase1-2026!");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -46,6 +47,16 @@ export default function Login() {
           <p className="text-ink-soft mb-10 max-w-sm">
             Step into the studio where you craft work-simulation cases that reveal how candidates truly think.
           </p>
+
+          <div className="space-y-3 mb-6">
+            <GoogleAuthButton label="Continue with Google" />
+          </div>
+
+          <div className="flex items-center gap-3 mb-6 text-[11px] uppercase tracking-wider text-ink-soft">
+            <span className="flex-1 h-px bg-black/10" />
+            <span>or use your email</span>
+            <span className="flex-1 h-px bg-black/10" />
+          </div>
 
           <form onSubmit={onSubmit} className="space-y-5" data-testid="login-form">
             <div>

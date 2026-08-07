@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { Compass, ArrowRight } from "@phosphor-icons/react";
 import { toast } from "sonner";
+import GoogleAuthButton from "@/components/GoogleAuthButton";
 
 export default function Signup() {
   const [form, setForm] = useState({ full_name: "", email: "", company: "", password: "" });
@@ -45,6 +46,16 @@ export default function Signup() {
           Start hiring on judgment, not trivia.
         </h1>
         <p className="text-ink-soft mb-10">It takes a minute. No credit card.</p>
+
+        <div className="mb-6">
+          <GoogleAuthButton label="Sign up with Google" />
+        </div>
+
+        <div className="flex items-center gap-3 mb-6 text-[11px] uppercase tracking-wider text-ink-soft">
+          <span className="flex-1 h-px bg-black/10" />
+          <span>or use your email</span>
+          <span className="flex-1 h-px bg-black/10" />
+        </div>
 
         <form onSubmit={onSubmit} className="space-y-5" data-testid="signup-form">
           {[

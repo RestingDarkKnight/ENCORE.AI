@@ -244,6 +244,19 @@ A hiring manager describes a role; ENCORE uses Claude to generate a tailored cas
 - Fixed legacy-answer rendering bug on ReportView: typed answers (string/array/object) all serialize to readable text — no more "Object as React child" crash.
 - Test coverage: 10/10 Slice 4 pytest (`test_phase_h_slice4.py`), 109/109 backend regression, frontend Playwright validated provisional→override→finalize→reopen flow, shared-report gating, Reports Hub pending pills, no JS console errors (iteration_11.json).
 
+**Customer-facing readiness ✅ — Multi-tenant + Google Auth + deploy docs (2026-02-19)**
+- Removed the "Made with Emergent" watermark from `frontend/public/index.html` (0 occurrences in served HTML).
+- **Open, multi-tenant signup already works** — `POST /api/auth/signup` accepts any email/password; each new account gets an isolated workspace scoped by `manager_id`. Signup UI is live at `/signup` (already linked from Landing CTAs, Login, etc.).
+- **Emergent-managed Google Auth added** alongside password login:
+  - New backend route `POST /api/auth/google/session` exchanges an Emergent Auth `session_id` for our first-party JWT.
+  - `ManagerDB.password_hash` is now nullable; new field `auth_provider` (`password`|`google`) + optional `picture`.
+  - New frontend route `/auth/callback` handles the OAuth return, hydrates AuthProvider, navigates to dashboard.
+  - New `<GoogleAuthButton>` component mounted on both `/login` ("Continue with Google") and `/signup` ("Sign up with Google").
+  - Removed the demo-account pre-fill on Login so the product looks clean to first-time visitors.
+- **Docs written**: `/app/DEPLOYMENT.md` — end-to-end deploy walkthrough for Vercel (frontend) + Railway (backend) + MongoDB Atlas (DB) + custom domain (Namecheap/Cloudflare) + rollback + operational checklist + common issues table.
+- **Auth playbook**: `/app/auth_testing.md` (flow reference) and `/app/memory/test_credentials.md` (updated with signup + Google flow notes).
+- Regression: 109/109 backend tests still passing.
+
 **Slice 3 (P0) — pending**: 6 formal question types (`mcq`, `multiple_correct`, `fill_blank`, `match`, `short_answer`, `open`) + deterministic scoring engine for the objective ones. The `require_reasoning` boolean and `assessment_mode` literal are already on `Case` and ready to drive Slice 3 logic.
 
 **Slice 4 (P0) — pending**: Grading system — human-in-the-loop review gate, identity-blind LLM evaluation with quoted evidence, transparent candidate-facing feedback.

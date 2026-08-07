@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/lib/auth";
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
+import AuthCallback from "@/pages/AuthCallback";
 import Dashboard from "@/pages/Dashboard";
 import RolesList from "@/pages/RolesList";
 import CreateRole from "@/pages/CreateRole";
@@ -47,6 +48,7 @@ function AnimatedRoutes() {
         <Route path="/" element={wrap(<Root />)} />
         <Route path="/login" element={wrap(<Login />)} />
         <Route path="/signup" element={wrap(<Signup />)} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/take/:token" element={wrap(<TakeCase />)} />
         <Route path="/r/:shareToken" element={wrap(<SharedReport />)} />
         <Route path="/dashboard" element={<ProtectedRoute>{wrap(<Dashboard />)}</ProtectedRoute>} />

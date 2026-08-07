@@ -42,8 +42,14 @@ class ManagerPublic(ManagerBase):
 class ManagerDB(ManagerBase):
     id: str = Field(default_factory=_new_id)
     role: Literal["manager", "candidate"] = "manager"
-    password_hash: str
+    password_hash: Optional[str] = None  # Nullable for OAuth-only accounts (Google sign-in)
+    auth_provider: Literal["password", "google"] = "password"
+    picture: Optional[str] = None
     created_at: str = Field(default_factory=_now_iso)
+
+
+class GoogleSessionRequest(BaseModel):
+    session_id: str
 
 
 class TokenResponse(BaseModel):
