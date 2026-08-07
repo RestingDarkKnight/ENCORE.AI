@@ -156,7 +156,6 @@ export default function CreateRole() {
     };
     run();
     return () => { cancel = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
   const refreshTech = async () => {
