@@ -1,5 +1,5 @@
 # ENCORE
-
+https://case-study-ai-1.emergent.host/login
 > **AI-native simulation hiring.** Hire on judgment. Not trivia.
 
 ENCORE turns a job description into a realistic, open-ended work-simulation case study. A hiring manager describes a role; ENCORE uses **Claude** to generate a tailored case with a weighted rubric. A candidate works through it (text + optional voice). ENCORE then evaluates the response against the rubric and produces a scored report with verbatim quotes — not a black-box vibe check.
