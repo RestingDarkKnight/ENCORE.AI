@@ -267,6 +267,24 @@ export default function CreateRole() {
           >
             {step === 0 && (
               <div className="space-y-5">
+                <JdPasteBlock
+                  onParsed={(parsed) => {
+                    setForm((f) => ({
+                      ...f,
+                      job_title: parsed.job_title || f.job_title,
+                      industry: parsed.industry || f.industry,
+                      seniority: parsed.seniority || f.seniority,
+                      difficulty_level: parsed.difficulty_level || f.difficulty_level,
+                      language_register: parsed.language_register || f.language_register,
+                      technical_skills: parsed.technical_skills?.length ? parsed.technical_skills : f.technical_skills,
+                      soft_skills: parsed.soft_skills?.length ? parsed.soft_skills : f.soft_skills,
+                      success_criteria: parsed.success_criteria || f.success_criteria,
+                      common_challenges: parsed.common_challenges || f.common_challenges,
+                    }));
+                    toast.success("JD parsed. Review each step to fine-tune.");
+                  }}
+                />
+
                 <div>
                   <label className="block text-sm font-medium text-ink-soft mb-1.5">Job title</label>
                   <input
@@ -274,9 +292,32 @@ export default function CreateRole() {
                     onChange={update("job_title")}
                     placeholder="e.g. QA Engineer"
                     data-testid="step-job-title"
+                    list="job-title-suggestions"
                     className="w-full bg-transparent border border-black/15 rounded-lg px-4 py-3 focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all"
                     autoFocus
                   />
+                  <datalist id="job-title-suggestions">
+                    <option value="QA Engineer" />
+                    <option value="QA Analyst" />
+                    <option value="QA Automation Engineer" />
+                    <option value="Backend Engineer" />
+                    <option value="Frontend Engineer" />
+                    <option value="Full-Stack Engineer" />
+                    <option value="Data Analyst" />
+                    <option value="Data Engineer" />
+                    <option value="Data Scientist" />
+                    <option value="Product Manager" />
+                    <option value="DevOps Engineer" />
+                    <option value="Site Reliability Engineer" />
+                    <option value="Mobile Engineer (Android)" />
+                    <option value="Mobile Engineer (iOS)" />
+                    <option value="ML Engineer" />
+                    <option value="Security Engineer" />
+                    <option value="Solutions Architect" />
+                    <option value="Technical Program Manager" />
+                    <option value="Business Analyst" />
+                    <option value="UX Designer" />
+                  </datalist>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-ink-soft mb-1.5">Industry or domain</label>
@@ -610,3 +651,87 @@ function ChipStep({ label, placeholder, items, input, setInput, onAdd, onRemove,
     </div>
   );
 }
+
+// JdPasteBlock — paste a JD → Claude Haiku parses it → prefills every wizard step.
+// User can also self-fill from scratch (just leave this collapsed). Kept intentionally
+// compact so it doesn't dominate the first step.
+function JdPasteBlock({ onParsed }) {
+  const [open, setOpen] = useState(false);
+  const [jd, setJd] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const parse = async () => {
+    if (jd.trim().length < 40) {
+      toast.error("Paste a bit more of the JD (≥40 characters).");
+      return;
+    }
+    setBusy(true);
+    try {
+      const { data } = await api.post("/roles/parse-jd", { jd_text: jd.trim() });
+      onParsed(data);
+      setOpen(false);
+      setJd("");
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "JD parse failed. You can self-fill below.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="border border-dashed border-brand/30 rounded-xl p-4 bg-brand/[0.03]" data-testid="jd-paste-block">
+      {!open ? (
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <p className="text-sm font-semibold text-ink">Have a JD ready?</p>
+            <p className="text-xs text-ink-soft mt-0.5">Paste it — our AI will pre-fill every step of this wizard in ~5 seconds.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            data-testid="jd-open-button"
+            className="btn-primary text-sm"
+          >
+            Paste JD & auto-fill
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <p className="encore-overline">Paste job description</p>
+          <textarea
+            value={jd}
+            onChange={(e) => setJd(e.target.value)}
+            rows={8}
+            placeholder="Paste the JD here — including responsibilities, requirements, tech stack, industry, seniority…"
+            data-testid="jd-paste-textarea"
+            className="w-full bg-canvas border border-black/15 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all resize-y"
+          />
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <p className="text-xs text-ink-soft">Or close this and self-fill each step manually.</p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => { setOpen(false); setJd(""); }}
+                disabled={busy}
+                data-testid="jd-cancel-button"
+                className="btn-quiet text-sm"
+              >
+                Self-fill instead
+              </button>
+              <button
+                type="button"
+                onClick={parse}
+                disabled={busy || jd.trim().length < 40}
+                data-testid="jd-parse-button"
+                className="btn-primary text-sm"
+              >
+                {busy ? "Parsing…" : "Parse & auto-fill"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+

@@ -257,6 +257,17 @@ A hiring manager describes a role; ENCORE uses Claude to generate a tailored cas
 - **Auth playbook**: `/app/auth_testing.md` (flow reference) and `/app/memory/test_credentials.md` (updated with signup + Google flow notes).
 - Regression: 109/109 backend tests still passing.
 
+**JD Auto-Parse + Job-title recommendations ✅ (2026-02-19)**
+- New backend route `POST /api/roles/parse-jd` — paste a JD, get back a full ParsedRole (job_title, industry, seniority, difficulty, language_register, technical_skills, soft_skills, success_criteria, common_challenges). Uses `claude-haiku-4-5` for cost efficiency (~1 call, cheap).
+- New `<JdPasteBlock>` component on CreateRole Step 1: dashed amber "Have a JD ready?" call-out with "Paste JD & auto-fill" button → expands to textarea + Parse button → prefills every step of the 7-step wizard on success. "Self-fill instead" always visible for manual path.
+- Job-title field now has a native `<datalist>` autocomplete with 20 common titles (QA Engineer / Analyst / Automation Engineer, Backend / Frontend / Full-Stack Engineer, Data Analyst / Engineer / Scientist, PM, DevOps, SRE, Mobile, ML, Security, Solutions Architect, TPM, Business Analyst, UX Designer). Instant recommendations as the user types.
+
+**Emergent-native deployment path (recommended by user 2026-02-19)**
+- Use Emergent's built-in **Deploy** button (not Vercel/Railway). Rationale: `EMERGENT_LLM_KEY` is auto-provisioned in production → Claude / OpenAI calls just work end-to-end without any per-user API-key setup.
+- **Cost**: 50 credits/month per deployed app. Rollback and redeploy are free.
+- **Custom domain**: attach later via **Home → Link domain** (Entri integration). Live URL is provided immediately after first deploy.
+- Full Vercel+Railway path in `/app/DEPLOYMENT.md` remains valid if user chooses to self-host later.
+
 **Slice 3 (P0) — pending**: 6 formal question types (`mcq`, `multiple_correct`, `fill_blank`, `match`, `short_answer`, `open`) + deterministic scoring engine for the objective ones. The `require_reasoning` boolean and `assessment_mode` literal are already on `Case` and ready to drive Slice 3 logic.
 
 **Slice 4 (P0) — pending**: Grading system — human-in-the-loop review gate, identity-blind LLM evaluation with quoted evidence, transparent candidate-facing feedback.

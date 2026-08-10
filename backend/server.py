@@ -20,6 +20,7 @@ from routes_outcomes import router as outcomes_router  # noqa: E402
 from routes_reports import router as reports_router  # noqa: E402
 from routes_responses import router as responses_router  # noqa: E402
 from routes_roles import router as roles_router  # noqa: E402
+from routes_roles_jd import router as roles_jd_router  # noqa: E402
 from routes_share import router as share_router  # noqa: E402
 from routes_stats import router as stats_router  # noqa: E402
 from routes_suggest import router as suggest_router  # noqa: E402
@@ -68,6 +69,7 @@ async def health():
 
 api.include_router(auth_router)
 api.include_router(roles_router)
+api.include_router(roles_jd_router)
 api.include_router(cases_router)
 api.include_router(assignments_router)
 api.include_router(responses_router)
